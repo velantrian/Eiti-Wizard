@@ -1320,7 +1320,7 @@ main {
   .tts-cache-stat .lbl{font-size:10px;color:var(--text-dim);}
   </style>
 </head>
-<body data-theme="midnight">
+<body data-theme="azure">
 
 <!-- Splash screen -->
 <div id="splash">
@@ -5003,7 +5003,7 @@ async function loadConfig() {
   if (cfg.lang) { document.getElementById('cfgLang').value = cfg.lang; applyLang(cfg.lang); }
 
   // Применяем тему
-  applyTheme(cfg.theme || 'midnight');
+  applyTheme(cfg.theme || 'azure');
 
   // API ключ из sessionStorage (безопаснее чем IndexedDB)
   const apiKey = sessionStorage.getItem('cfgApiKey');
