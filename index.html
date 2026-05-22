@@ -2264,7 +2264,7 @@ main {
         <!-- Tab Visibility Card -->
         <div class="card" id="tab-visibility-card">
           <div class="card-title" data-i18n="card_modules">🧩 Модули — включить / отключить</div>
-          <p data-i18n="modules_desc" style="font-size:.78rem;color:var(--text-dim);margin-bottom:12px;line-height:1.5">Скрой ненужные разделы из верхней панели. Настройки всегда активны.</p>
+          <p data-i18n="modules_desc" style="font-size:.78rem;color:var(--text-dim);margin-bottom:12px;line-height:1.5">Чат, Агент и Настройки всегда активны. Остальные модули можно скрыть чтобы не загромождать панель.</p>
           <div id="tab-toggles-list">
             <!-- генерируется tabVisibilityInit() -->
           </div>
@@ -6947,7 +6947,7 @@ const LANGS = {
     btn_clear_short:'🗑 Очистить',
     confirm_clear_board:'Удалить все задачи?',
     card_modules:'🧩 Модули — включить / отключить',
-    modules_desc:'Скрой ненужные разделы из верхней панели. Настройки всегда активны.',
+    modules_desc:'Чат, Агент и Настройки всегда активны. Остальные модули можно скрыть чтобы не загромождать панель.',
     btn_show_all:'✓ Показать все',
     btn_hide_all:'🧹 Скрыть все',
     toast_all_modules_on:'Все модули включены',
@@ -7127,7 +7127,7 @@ const LANGS = {
     btn_clear_short:'🗑 Clear',
     confirm_clear_board:'Delete all tasks?',
     card_modules:'🧩 Modules — enable / disable',
-    modules_desc:'Hide tabs you don\'t need from the top bar. Settings is always active.',
+    modules_desc:'Chat, Agent and Settings are always active. Other modules can be hidden to declutter the panel.',
     btn_show_all:'✓ Show all',
     btn_hide_all:'🧹 Hide all',
     toast_all_modules_on:'All modules enabled',
@@ -8098,10 +8098,9 @@ var TAB_VIS_KEY = 'wiz_tab_visibility';
 
 // Все вкладки с мета-данными
 // v1.7.8: переводы берутся из LANGS[currentLang] во время рендера
-// Все вкладки переключаемы кроме Настроек (без них нельзя вернуть остальные)
 var TAB_DEFS = [
-  { panel:'chat',       icon:'💬', labelKey:'mod_chat',       descKey:'mod_chat_desc',       required:false },
-  { panel:'agent',      icon:'⚡', labelKey:'mod_agent',      descKey:'mod_agent_desc',      required:false },
+  { panel:'chat',       icon:'💬', labelKey:'mod_chat',       descKey:'mod_chat_desc',       required:true  },
+  { panel:'agent',      icon:'⚡', labelKey:'mod_agent',      descKey:'mod_agent_desc',      required:true  },
   { panel:'memory',     icon:'🧠', labelKey:'mod_memory',     descKey:'mod_memory_desc',     required:false },
   { panel:'notes',      icon:'📝', labelKey:'mod_notes',      descKey:'mod_notes_desc',      required:false },
   { panel:'eiti-files', icon:'💾', labelKey:'mod_eiti_files', descKey:'mod_eiti_files_desc', required:false },
@@ -8136,11 +8135,8 @@ function tabVisToggle(panel, visible) {
   state[panel] = visible;
   localStorage.setItem(TAB_VIS_KEY, JSON.stringify(state));
   tabVisApply();
-  // если скрыли активную вкладку — переключить на видимую (чат если доступен, иначе настройки)
-  if (!visible && activePanel === panel) {
-    var fallback = (state['chat'] === false) ? 'settings' : 'chat';
-    switchPanel(fallback);
-  }
+  // если скрыли активную вкладку — переключить на чат
+  if (!visible && activePanel === panel) { switchPanel('chat'); }
 }
 
 function tabVisibilityInit() {
@@ -8189,11 +8185,8 @@ function tabVisShowAll() {
 }
 
 function tabVisHideOptional() {
-  // «Скрыть все» — оставляет только Чат, Агент и Настройки (минимальный рабочий набор)
   var state = {};
-  TAB_DEFS.forEach(function(d) {
-    state[d.panel] = (d.panel === 'chat' || d.panel === 'agent' || d.panel === 'settings');
-  });
+  TAB_DEFS.filter(function(d){ return !d.required; }).forEach(function(d){ state[d.panel] = false; });
   localStorage.setItem(TAB_VIS_KEY, JSON.stringify(state));
   tabVisibilityInit();
   switchPanel('chat');
