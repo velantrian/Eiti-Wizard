@@ -4212,6 +4212,21 @@ const AGENT_TOOLS_SPEC = [
     parameters:{ type:'object', properties:{ id:{type:'string'}, title:{type:'string'}}}},
   { name:'task_delete', description:'Удалить задачу по id или заголовку.',
     parameters:{ type:'object', properties:{ id:{type:'string'}, title:{type:'string'}}}},
+
+  // v1.7.8: доступ к истории чатов из агент-режима
+  { name:'chats_list', description:'Список всех чат-сессий (id, название, число сообщений, дата последней активности). Используй чтобы найти нужный чат когда пользователь упоминает его по имени.',
+    parameters:{ type:'object', properties:{}}},
+  { name:'chat_read', description:'Прочитать сообщения из конкретного чата. Можно указать chatId ИЛИ title (часть названия — будет найден ближайший). Возвращает последние N сообщений (по умолчанию 30).',
+    parameters:{ type:'object', properties:{
+      chatId:{type:'string', description:'ID чата (приоритетно)'},
+      title:{type:'string', description:'Название чата или его часть, если ID неизвестен'},
+      limit:{type:'number', description:'Сколько последних сообщений вернуть (1-100)'}
+    }}},
+  { name:'chat_search', description:'Поиск по тексту во всех чат-сессиях. Возвращает совпадения с указанием имени чата, роли и фрагмента сообщения.',
+    parameters:{ type:'object', properties:{
+      query:{type:'string', description:'Что искать'},
+      limit:{type:'number', description:'Макс. совпадений (по умолчанию 20)'}
+    }, required:['query']}},
 ];
 
 function _agentToolsToOpenAI() {
@@ -4416,6 +4431,86 @@ async function executeAgentTool(name, args) {
         return `Удалена задача "${t.title}".`;
       }
 
+      // ── v1.7.8: доступ к истории чат-сессий ─────────────────────────
+      case 'chats_list': {
+        if (!db) return 'БД недоступна.';
+        const chats = await dbGetAll('chats');
+        const msgs = await dbGetAll('messages');
+        if (!chats.length) return '(нет сохранённых чатов)';
+        const counts = {};
+        const lastTs = {};
+        msgs.forEach(m => {
+          if (m.panel !== 'chat' || !m.chatId) return;
+          counts[m.chatId] = (counts[m.chatId] || 0) + 1;
+          if (!lastTs[m.chatId] || (m.ts||0) > lastTs[m.chatId]) lastTs[m.chatId] = m.ts || 0;
+        });
+        const rows = chats
+          .map(c => ({
+            id: c.id,
+            title: c.title || 'Без названия',
+            count: counts[c.id] || 0,
+            updated: lastTs[c.id] || c.updated || c.created || 0
+          }))
+          .sort((a,b) => b.updated - a.updated)
+          .map(c => `- id="${c.id}" "${c.title}" — ${c.count} сообщ., обновлён ${c.updated?new Date(c.updated).toLocaleString('ru'):'?'}`);
+        return rows.join('\n');
+      }
+      case 'chat_read': {
+        if (!db) return 'БД недоступна.';
+        const limit = Math.max(1, Math.min(100, Number(args.limit) || 30));
+        let chatId = String(args.chatId || '').trim();
+        let chatTitle = '';
+        if (!chatId && args.title) {
+          const chats = await dbGetAll('chats');
+          const q = String(args.title).trim().toLowerCase();
+          const exact = chats.find(c => (c.title||'').trim().toLowerCase() === q);
+          const partial = exact || chats.find(c => (c.title||'').toLowerCase().includes(q));
+          if (!partial) return `Чат с названием "${args.title}" не найден. Попробуй chats_list чтобы увидеть доступные.`;
+          chatId = partial.id;
+          chatTitle = partial.title || '';
+        } else if (chatId) {
+          const chats = await dbGetAll('chats');
+          const c = chats.find(x => x.id === chatId);
+          chatTitle = c?.title || '';
+        }
+        if (!chatId) return 'Укажи chatId или title.';
+        const msgs = await dbGetAll('messages');
+        const chatMsgs = msgs
+          .filter(m => m.chatId === chatId && m.panel === 'chat')
+          .sort((a,b) => (a.ts||0) - (b.ts||0))
+          .slice(-limit);
+        if (!chatMsgs.length) return `В чате "${chatTitle||chatId}" нет сообщений.`;
+        const out = chatMsgs.map(m => {
+          const role = m.role === 'user' ? 'Пользователь' : 'AI';
+          const when = m.ts ? new Date(m.ts).toLocaleString('ru') : '?';
+          return `[${when}] ${role}: ${(m.content||'').slice(0, 600)}`;
+        }).join('\n');
+        return `Чат "${chatTitle||chatId}" (последние ${chatMsgs.length}):\n` + out;
+      }
+      case 'chat_search': {
+        if (!db) return 'БД недоступна.';
+        const q = String(args.query||'').trim().toLowerCase();
+        if (!q) return 'Пустой запрос.';
+        const limit = Math.max(1, Math.min(50, Number(args.limit) || 20));
+        const chats = await dbGetAll('chats');
+        const chatTitles = {}; chats.forEach(c => { chatTitles[c.id] = c.title || ('Чат ' + (c.id||'').slice(-4)); });
+        const msgs = await dbGetAll('messages');
+        const matches = msgs
+          .filter(m => m.panel === 'chat' && (m.content||'').toLowerCase().includes(q))
+          .sort((a,b) => (b.ts||0) - (a.ts||0))
+          .slice(0, limit);
+        if (!matches.length) return `Совпадений по "${args.query}" не найдено.`;
+        return matches.map(m => {
+          const title = chatTitles[m.chatId] || (m.chatId||'?').slice(-4);
+          const role = m.role === 'user' ? 'Пользователь' : 'AI';
+          const when = m.ts ? new Date(m.ts).toLocaleString('ru') : '?';
+          const idx = (m.content||'').toLowerCase().indexOf(q);
+          const start = Math.max(0, idx - 60);
+          const snippet = (m.content||'').slice(start, start + 200);
+          return `[${when}] "${title}" — ${role}: …${snippet}…`;
+        }).join('\n');
+      }
+
       default:
         return `Неизвестный инструмент: ${name}`;
     }
@@ -4433,10 +4528,11 @@ async function runAgentToolUseLoop({ provider, model, apiKey, userInstr, userTex
   const _senderEl = document.getElementById(_liveId + '-sender');
   const _finalLabel = wizFinalSenderHTML(provider, _wizUsedWeb);
 
-  const toolSysPrompt = `Ты — автономный агент VELAN EITI. У тебя есть нативные инструменты для управления заметками, EITI-файлами, памятью и доской задач.
+  const toolSysPrompt = `Ты — автономный агент VELAN EITI. У тебя есть нативные инструменты для управления заметками, EITI-файлами, памятью, доской задач, а также для чтения истории чат-сессий пользователя.
 ВАЖНО:
 • Используй ИНСТРУМЕНТЫ (function calling), а не текстовые команды [NOTE_WRITE], <EITI_FILE> и т.п.
-• Если пользователь просит что-то изменить — сначала прочитай (note_read / eiti_file_read / notes_list / eiti_files_list / mem_list / task_list), потом изменяй.
+• Если пользователь упоминает чат по имени («что мы обсуждали с Лёвой», «в чате про проект») — используй chats_list чтобы увидеть доступные сессии, затем chat_read для нужной. Можно искать по тексту через chat_search.
+• Если пользователь просит что-то изменить — сначала прочитай (note_read / eiti_file_read / notes_list / eiti_files_list / mem_list / task_list / chats_list / chat_read), потом изменяй.
 • Если задача состоит из нескольких шагов — выполняй их по очереди, не пытайся всё запихнуть в один вызов.
 • После выполнения действий — кратко отчитайся пользователю на русском, что сделано.
 • Если все нужные действия выполнены — заверши ответ финальным текстом и не вызывай больше инструментов.`;
@@ -4676,19 +4772,38 @@ AI провайдеры: Ollama (офлайн, localhost:11434), Claude, OpenAI,
     if (_searchResult) { messageWithFiles += '\n\n[Результаты веб-поиска]:\n' + _searchResult; _wizUsedWeb = true; }
   }
 
-  // ── Контекст чата для агента — берёт последние сообщения из ВСЕХ чатов ───
-  // (раньше требовало activeChatId — а в режиме агента он часто null)
+  // ── Контекст чата для агента — группируем по чат-сессиям с названиями ──
+  // v1.7.8: вместо плоского списка из 12 сообщений теперь даём агенту
+  // карту чатов (id, название, число сообщений) + по 4 последних реплики из
+  // каждого. Для активного чата — глубже (10 реплик).
   if (activePanel === 'agent' && db) {
     try {
-      const allMsgs = await dbGetAll('messages');
-      // Берём ВСЕ chat-сообщения если activeChatId не задан, иначе из активного
-      const chatMsgs = allMsgs
-        .filter(m => m.panel === 'chat' && (!activeChatId || m.chatId === activeChatId))
-        .sort((a, b) => (a.ts || 0) - (b.ts || 0))
-        .slice(-12); // последние 12 для лучшего контекста
-      if (chatMsgs.length > 0) {
-        const ctxStr = chatMsgs.map(m => `${m.role === 'user' ? 'Пользователь' : 'AI'}: ${m.content}`).join('\n');
-        messageWithFiles += `\n\n[Контекст недавнего чата]:\n${ctxStr}\n[Конец контекста чата]`;
+      const [allMsgs, allChats] = await Promise.all([dbGetAll('messages'), dbGetAll('chats')]);
+      const chatTitles = {}; (allChats || []).forEach(c => { chatTitles[c.id] = c.title || ('Чат ' + (c.id||'').slice(-4)); });
+      const byChat = {};
+      (allMsgs || []).forEach(m => {
+        if (m.panel !== 'chat' || !m.chatId) return;
+        (byChat[m.chatId] = byChat[m.chatId] || []).push(m);
+      });
+      const chatIds = Object.keys(byChat);
+      if (chatIds.length) {
+        // сортируем чаты по последней активности (новые сверху), берём максимум 6
+        chatIds.sort((a, b) => {
+          const ta = Math.max.apply(null, byChat[a].map(m => m.ts || 0));
+          const tb = Math.max.apply(null, byChat[b].map(m => m.ts || 0));
+          return tb - ta;
+        });
+        const topChats = chatIds.slice(0, 6);
+        let ctxBlocks = [];
+        topChats.forEach(cid => {
+          const msgs = byChat[cid].sort((a, b) => (a.ts || 0) - (b.ts || 0));
+          const limit = (cid === activeChatId) ? 10 : 4;
+          const tail = msgs.slice(-limit);
+          const title = chatTitles[cid] || cid.slice(-4);
+          const block = tail.map(m => `${m.role === 'user' ? 'Пользователь' : 'AI'}: ${(m.content||'').slice(0, 400)}`).join('\n');
+          ctxBlocks.push(`### Чат "${title}" (id=${cid}, всего ${msgs.length} сообщ.)\n${block}`);
+        });
+        messageWithFiles += `\n\n[Контекст чатов пользователя]\nДоступные чат-сессии и последние реплики (полную историю можно получить инструментами chats_list / chat_read / chat_search):\n\n` + ctxBlocks.join('\n\n') + `\n\n[Конец контекста чатов]`;
       }
     } catch (e) {}
   }
