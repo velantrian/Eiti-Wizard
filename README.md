@@ -244,7 +244,7 @@ Phase 5 — Экосистема
 
 🛠 Установка
 
-git clone https://velantrian.github.io/Eiti-Wizard/
+git clone https://github.com/velantrian/Eiti-Wizard.git
 
 
 ---
