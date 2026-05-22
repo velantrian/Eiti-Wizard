@@ -1746,7 +1746,7 @@ main {
         </div>
 
         <div class="card">
-          <div class="card-title" data-i18n="card_provider">🔌 Провайдер</div>
+          <div class="card-title" data-i18n="card_provider">🔌 Провайдер (Чат)</div>
           <div class="field">
             <label data-i18n="lbl_api_provider">API Provider</label>
             <select id="cfgProvider">
@@ -1765,6 +1765,49 @@ main {
             <select id="cfgModel">
               <option value="" data-i18n="opt_select_provider">— выберите провайдера —</option>
             </select>
+          </div>
+          <!-- v1.7.8: отдельный выбор провайдера/модели для агента -->
+          <hr style="border:none;border-top:1px solid var(--toggle-border);margin:14px 0 12px">
+          <div class="toggle-row" style="margin-bottom:6px">
+            <div>
+              <div class="toggle-label" data-i18n="tog_agent_same">⚡ Агент — тот же провайдер что у чата</div>
+              <div class="toggle-sub" data-i18n="tog_agent_same_sub">Выключи чтобы выбрать для агента отдельную модель</div>
+            </div>
+            <label class="toggle">
+              <input type="checkbox" id="cfgAgentSameAsChat" checked>
+              <div class="toggle-track"></div>
+            </label>
+          </div>
+          <div id="agent-provider-block" style="display:none">
+            <div class="field">
+              <label data-i18n="lbl_agent_provider">API Provider — Агент</label>
+              <select id="cfgAgentProvider">
+                <option value="ollama" data-i18n="opt_ollama">🖥 Ollama (офлайн)</option>
+                <option value="deepseek">🔵 DeepSeek V4</option>
+                <option value="claude">🟣 Claude</option>
+                <option value="openai">⚪ OpenAI</option>
+                <option value="groq">⚡ Groq (LPU)</option>
+                <option value="openrouter">🔀 OpenRouter</option>
+                <option value="gemini">✨ Google Gemini</option>
+                <option value="grok">🤖 xAI Grok</option>
+              </select>
+            </div>
+            <div class="field">
+              <label data-i18n="lbl_agent_model">Модель — Агент</label>
+              <select id="cfgAgentModel">
+                <option value="" data-i18n="opt_select_provider">— выберите провайдера —</option>
+              </select>
+            </div>
+            <!-- v1.7.8: отдельный API key для провайдера агента -->
+            <div class="field">
+              <label for="cfgAgentApiKey" data-i18n="lbl_agent_api_key">API Key — Агент</label>
+              <div class="input-with-btn">
+                <input type="password" id="cfgAgentApiKey" placeholder="sk-...">
+                <button id="activateAgentApiKey" class="btn-small" data-i18n="btn_activate">✓ Активировать</button>
+                <button id="clearAgentApiKey" class="btn-small" data-i18n-title="ttl_clear_api" title="Очистить API ключ">🗑</button>
+              </div>
+              <div id="cfgAgentApiKeyHint" style="font-size:11px;color:var(--text-dim);margin-top:4px;opacity:0.7" data-i18n="hint_agent_api_key">Ключ для провайдера агента (хранится отдельно от ключа чата)</div>
+            </div>
           </div>
 
           <!-- Бюджет токенов на ответ -->
@@ -4691,9 +4734,18 @@ async function sendMessage(inputEl, historyEl) {
   const currentChatId = activePanel === 'chat' ? activeChatId : activeAgentId;
   if (db) dbPut('messages', { role: 'user', content: text, ts: Date.now(), panel: activePanel, chatId: currentChatId });
 
-  const provider = document.getElementById('cfgProvider').value;
-  const model    = document.getElementById('cfgModel').value;
-  const apiKey   = sessionStorage.getItem('cfgApiKey');
+  // v1.7.8: отдельный провайдер/модель для агента если включено
+  const _agSameAsChat = document.getElementById('cfgAgentSameAsChat')?.checked !== false;
+  let provider, model;
+  if (activePanel === 'agent' && !_agSameAsChat) {
+    provider = document.getElementById('cfgAgentProvider')?.value || document.getElementById('cfgProvider').value;
+    model    = document.getElementById('cfgAgentModel')?.value || document.getElementById('cfgModel').value;
+  } else {
+    provider = document.getElementById('cfgProvider').value;
+    model    = document.getElementById('cfgModel').value;
+  }
+  // API key — берём специфичный для провайдера, иначе общий
+  const apiKey = sessionStorage.getItem('cfgApiKey_' + provider) || sessionStorage.getItem('cfgApiKey');
 
   // Thinking mode detection — до typing, чтобы сразу показать анимацию
   const _wizThinkMode = wizDetectThinkMode(text, model, provider);
@@ -5621,6 +5673,20 @@ async function loadConfig() {
   if (cfg.provider) document.getElementById('cfgProvider').value = cfg.provider;
   // Populate models for restored provider, then restore saved model
   populateModels(cfg.provider || 'ollama', cfg.model || null);
+  // v1.7.8: восстановление выбора провайдера/модели для агента
+  const agSame = document.getElementById('cfgAgentSameAsChat');
+  if (agSame) {
+    const sameAsChat = cfg.agentSameAsChat !== false; // default true
+    agSame.checked = sameAsChat;
+    const agBlock = document.getElementById('agent-provider-block');
+    if (agBlock) agBlock.style.display = sameAsChat ? 'none' : 'block';
+    const agProv = document.getElementById('cfgAgentProvider');
+    if (agProv) agProv.value = cfg.agentProvider || cfg.provider || 'ollama';
+    populateAgentModels(agProv?.value || 'ollama', cfg.agentModel || null);
+    // ключ агент-провайдера из sessionStorage
+    const agKey = document.getElementById('cfgAgentApiKey');
+    if (agKey && agProv) agKey.value = sessionStorage.getItem('cfgApiKey_' + agProv.value) || '';
+  }
   if (cfg.theme)    document.getElementById('cfgTheme').value    = cfg.theme;
   if (cfg.thinking !== undefined) document.getElementById('cfgThinking').checked = cfg.thinking;
   if (cfg.stream !== undefined) document.getElementById('cfgStream').checked = cfg.stream;
@@ -5738,6 +5804,9 @@ function saveConfigField(key, value) {
   // API ключ храним в sessionStorage, остальное в IndexedDB
   if (key === 'apikey' || key === 'apiKey') {
     sessionStorage.setItem('cfgApiKey', value);
+    // v1.7.8: дублируем под текущий провайдер чтобы ключи разных провайдеров не затирали друг друга
+    const _curProv = document.getElementById('cfgProvider')?.value;
+    if (_curProv) sessionStorage.setItem('cfgApiKey_' + _curProv, value);
     return;
   }
   if (db) dbPut('config', { id: key, key, value });
@@ -5866,6 +5935,22 @@ function populateModels(provider, savedModel) {
   }
 }
 
+// v1.7.8: то же самое но для агентского селектора
+function populateAgentModels(provider, savedModel) {
+  const modelSelect = document.getElementById('cfgAgentModel');
+  if (!modelSelect) return;
+  const models = PROVIDER_MODELS[provider] || [];
+  modelSelect.innerHTML = models.length
+    ? models.map(m => `<option value="${m.id}">${m.label}</option>`).join('')
+    : '<option value="">— модели не найдены —</option>';
+  if (savedModel && models.some(m => m.id === savedModel)) {
+    modelSelect.value = savedModel;
+  } else if (models.length) {
+    modelSelect.value = models[0].id;
+    saveConfigField('agentModel', models[0].id);
+  }
+}
+
 // OpenRouter: populate model list on provider change
 (function() {
   const providerSelect = document.getElementById('cfgProvider');
@@ -5874,6 +5959,13 @@ function populateModels(provider, savedModel) {
   providerSelect.addEventListener('change', function() {
     populateModels(this.value, null);
     saveConfigField('model', modelSelect.value);
+    // v1.7.8: подменить значение API key на сохранённое для нового провайдера
+    const _savedForNewProv = sessionStorage.getItem('cfgApiKey_' + this.value) || '';
+    const _keyEl = document.getElementById('cfgApiKey');
+    if (_keyEl) {
+      _keyEl.value = _savedForNewProv;
+      sessionStorage.setItem('cfgApiKey', _savedForNewProv);
+    }
     // legacy: openrouter/auto special handling
     if (this.value === 'openrouter') {
       const autoOpt = modelSelect.querySelector('option[value="openrouter/auto"]');
@@ -5891,6 +5983,77 @@ function populateModels(provider, savedModel) {
       saveConfigField('model', this.value);
     }
   });
+})();
+
+// v1.7.8: обработчики для отдельного провайдера агента
+(function() {
+  const agSame = document.getElementById('cfgAgentSameAsChat');
+  const agBlock = document.getElementById('agent-provider-block');
+  const agProv = document.getElementById('cfgAgentProvider');
+  const agModel = document.getElementById('cfgAgentModel');
+  const agKey = document.getElementById('cfgAgentApiKey');
+  const agKeyBtn = document.getElementById('activateAgentApiKey');
+  const agKeyClear = document.getElementById('clearAgentApiKey');
+  if (!agSame || !agBlock || !agProv || !agModel) return;
+
+  function refreshBlockVisibility() {
+    agBlock.style.display = agSame.checked ? 'none' : 'block';
+  }
+
+  function refreshAgentKeyField() {
+    if (!agKey) return;
+    const saved = sessionStorage.getItem('cfgApiKey_' + agProv.value) || '';
+    agKey.value = saved;
+  }
+
+  agSame.addEventListener('change', function() {
+    saveConfigField('agentSameAsChat', this.checked);
+    refreshBlockVisibility();
+    if (!this.checked && !agProv.value) {
+      // первый раз раскрыли — инициализируем агента текущим выбором чата
+      agProv.value = document.getElementById('cfgProvider').value;
+      saveConfigField('agentProvider', agProv.value);
+      populateAgentModels(agProv.value, document.getElementById('cfgModel').value);
+      saveConfigField('agentModel', agModel.value);
+    }
+    refreshAgentKeyField();
+  });
+
+  agProv.addEventListener('change', function() {
+    populateAgentModels(this.value, null);
+    saveConfigField('agentProvider', this.value);
+    saveConfigField('agentModel', agModel.value);
+    refreshAgentKeyField();
+  });
+
+  agModel.addEventListener('change', function() {
+    saveConfigField('agentModel', this.value);
+  });
+
+  if (agKey) {
+    agKey.addEventListener('input', function() {
+      sessionStorage.setItem('cfgApiKey_' + agProv.value, this.value);
+    });
+  }
+  if (agKeyBtn) {
+    agKeyBtn.addEventListener('click', function() {
+      const k = (agKey?.value || '').trim();
+      if (k) {
+        sessionStorage.setItem('cfgApiKey_' + agProv.value, k);
+        showToast('✅ API ключ агента активирован');
+      }
+    });
+  }
+  if (agKeyClear) {
+    agKeyClear.addEventListener('click', function() {
+      if (agKey) agKey.value = '';
+      sessionStorage.removeItem('cfgApiKey_' + agProv.value);
+      showToast('🗑 Ключ агента очищен');
+    });
+  }
+
+  refreshBlockVisibility();
+  refreshAgentKeyField();
 })();
 
 ['cfgThinking','cfgStream','cfgStats','cfgAutoConfirm'].forEach(id => {
@@ -6093,16 +6256,22 @@ document.getElementById('saveInstructions').addEventListener('click', () => {
 // API Key в sessionStorage
 const cfgApiKey = document.getElementById('cfgApiKey');
 const activateApiKey = document.getElementById('activateApiKey');
+// v1.7.8: вспомогалка — сохранить ключ и в legacy-слот, и в слот для текущего провайдера
+function _saveApiKeyForCurrentProvider(value) {
+  sessionStorage.setItem('cfgApiKey', value);
+  const p = document.getElementById('cfgProvider')?.value;
+  if (p) sessionStorage.setItem('cfgApiKey_' + p, value);
+}
 if (cfgApiKey) {
   cfgApiKey.addEventListener('input', e => {
-    sessionStorage.setItem('cfgApiKey', e.target.value);
+    _saveApiKeyForCurrentProvider(e.target.value);
   });
 }
 if (activateApiKey) {
   activateApiKey.addEventListener('click', () => {
     const key = cfgApiKey.value.trim();
     if (key) {
-      sessionStorage.setItem('cfgApiKey', key);
+      _saveApiKeyForCurrentProvider(key);
       activateApiKey.textContent = '✓ Активирован';
       activateApiKey.style.background = 'rgba(76, 175, 80, 0.3)';
       activateApiKey.style.borderColor = 'rgba(76, 175, 80, 0.6)';
@@ -6924,7 +7093,12 @@ const LANGS = {
     tab_chat:'Чат', tab_agent:'Агент', tab_memory:'Память',
     tab_history:'История', tab_files:'Файлы', tab_settings:'Настройки',
     // card titles
-    card_provider:'🔌 Провайдер', card_instructions:'📋 Инструкции',
+    card_provider:'🔌 Провайдер (Чат)', card_instructions:'📋 Инструкции',
+    tog_agent_same:'⚡ Агент — тот же провайдер что у чата',
+    tog_agent_same_sub:'Выключи чтобы выбрать для агента отдельную модель',
+    lbl_agent_provider:'API Provider — Агент', lbl_agent_model:'Модель — Агент',
+    lbl_agent_api_key:'API Key — Агент',
+    hint_agent_api_key:'Ключ для провайдера агента (хранится отдельно от ключа чата)',
     card_about:'🔍 О системе', card_params:'⚙ Параметры',
     card_theme:'🎨 Тема', card_lang:'🌐 Язык', card_pwa:'📱 PWA',
     card_history:'📜 История чата', card_files:'📁 Импорт / Экспорт',
@@ -7112,7 +7286,12 @@ const LANGS = {
   en: {
     tab_chat:'Chat', tab_agent:'Agent', tab_memory:'Memory',
     tab_history:'History', tab_files:'Files', tab_settings:'Settings',
-    card_provider:'🔌 Provider', card_instructions:'📋 Instructions',
+    card_provider:'🔌 Provider (Chat)', card_instructions:'📋 Instructions',
+    tog_agent_same:'⚡ Agent — same provider as chat',
+    tog_agent_same_sub:'Turn off to pick a separate model for the agent',
+    lbl_agent_provider:'API Provider — Agent', lbl_agent_model:'Model — Agent',
+    lbl_agent_api_key:'API Key — Agent',
+    hint_agent_api_key:'Key for the agent\'s provider (stored separately from the chat key)',
     card_about:'🔍 About System', card_params:'⚙ Parameters',
     card_theme:'🎨 Theme', card_lang:'🌐 Language', card_pwa:'📱 PWA',
     card_history:'📜 Chat History', card_files:'📁 Import / Export',
