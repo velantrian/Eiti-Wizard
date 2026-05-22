@@ -5809,6 +5809,13 @@ function _orUpdateBlockVisibility() {
   const keyInput = document.getElementById('cfgApiKey');
   const keyHint  = document.getElementById('cfgApiKeyHint');
   const keyLabel = document.querySelector('label[for="cfgApiKey"]');
+  // v1.7.8 FIX: безопасный доступ к LANGS — может быть в TDZ при ранних вызовах
+  let _ollamaPh = 'не нужен', _ollamaHint = '🖥 Локальный сервер — ключ не требуется';
+  try {
+    const _d = LANGS[currentLang];
+    if (_d?.ph_api_key_ollama) _ollamaPh = _d.ph_api_key_ollama;
+    if (_d?.hint_api_key_ollama) _ollamaHint = _d.hint_api_key_ollama;
+  } catch(e) {}
   const placeholders = {
     gemini:      { ph: 'AIza...', hint: '🔑 aistudio.google.com/app/apikey', label: 'Gemini API Key' },
     openai:      { ph: 'sk-...',  hint: '🔑 platform.openai.com/api-keys',   label: 'OpenAI API Key' },
@@ -5817,7 +5824,7 @@ function _orUpdateBlockVisibility() {
     groq:        { ph: 'gsk_...', hint: '🔑 console.groq.com/keys',           label: 'Groq API Key' },
     grok:        { ph: 'xai-...', hint: '🔑 x.ai/api',                        label: 'xAI Grok API Key' },
     openrouter:  { ph: 'sk-or-v1-...', hint: '🔑 openrouter.ai/settings/keys', label: 'OpenRouter API Key' },
-    ollama:      { ph: (LANGS[currentLang]?.ph_api_key_ollama || 'не нужен'), hint: (LANGS[currentLang]?.hint_api_key_ollama || '🖥 Локальный сервер — ключ не требуется'), label: 'API Key' },
+    ollama:      { ph: _ollamaPh, hint: _ollamaHint, label: 'API Key' },
   };
   const info = placeholders[prov] || { ph: 'API Key...', hint: '', label: 'API Key' };
   if (keyInput) keyInput.placeholder = info.ph;
@@ -6076,9 +6083,11 @@ function _eitiUpdateSearchProviderUI(provider) {
     if (ti && !ti.value) { const s = localStorage.getItem('wiz_tavily_key'); if (s) ti.value = _deobfKey(s); }
   }
   const lbl = document.getElementById('esp-status-label');
-  const tDict = LANGS[currentLang] || LANGS.ru;
-  const labels = { 'gemini-grounding':'🔵 Google Search', 'tavily':'🔍 Tavily', 'off': (tDict.search_provider_off || '🚫 Выключен') };
-  if (lbl) lbl.textContent = (tDict.search_active_prefix || 'Активен: ') + (labels[prov] || prov);
+  // v1.7.8 FIX: безопасный доступ к LANGS — может быть в TDZ при ранних вызовах
+  let _tDict = {};
+  try { _tDict = LANGS[currentLang] || LANGS.ru || {}; } catch(e) {}
+  const labels = { 'gemini-grounding':'🔵 Google Search', 'tavily':'🔍 Tavily', 'off': (_tDict.search_provider_off || '🚫 Выключен') };
+  if (lbl) lbl.textContent = (_tDict.search_active_prefix || 'Активен: ') + (labels[prov] || prov);
 }
 
 function eitiVerifyTavilyKey() {
@@ -6217,7 +6226,10 @@ const toggleDiary = document.getElementById('toggleDiary');
 const diaryStatusSub = document.getElementById('diaryStatusSub');
 
 function applyDiaryState(enabled) {
-  if (diaryStatusSub) { const _dt = LANGS[currentLang] || LANGS.ru; diaryStatusSub.textContent = enabled ? (_dt.tog_diary_on || 'Вкл — записи сохраняются') : (_dt.tog_diary_off || 'Выкл — записи не ведутся'); }
+  if (diaryStatusSub) {
+    let _dt = {}; try { _dt = LANGS[currentLang] || LANGS.ru || {}; } catch(e) {}
+    diaryStatusSub.textContent = enabled ? (_dt.tog_diary_on || 'Вкл — записи сохраняются') : (_dt.tog_diary_off || 'Выкл — записи не ведутся');
+  }
   if (toggleDiary) toggleDiary.checked = enabled;
 }
 
