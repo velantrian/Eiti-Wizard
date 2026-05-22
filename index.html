@@ -1351,12 +1351,12 @@ main {
     <button class="mode-tab active" data-panel="chat"><span class="tab-icon">💬</span><span class="tab-label" data-i18n="tab_chat">Чат</span></button>
     <button class="mode-tab" data-panel="agent"><span class="tab-icon">⚡</span><span class="tab-label" data-i18n="tab_agent">Агент</span></button>
     <button class="mode-tab" data-panel="memory"><span class="tab-icon">🧠</span><span class="tab-label" data-i18n="tab_memory">Память</span></button>
-    <button class="mode-tab" data-panel="projects"><span class="tab-icon">🧰</span><span class="tab-label">Проекты</span></button>
+    <button class="mode-tab" data-panel="projects"><span class="tab-icon">🧰</span><span class="tab-label" data-i18n="tab_projects">Проекты</span></button>
     <button class="mode-tab" data-panel="history"><span class="tab-icon">📜</span><span class="tab-label" data-i18n="tab_history">История</span></button>
-    <button class="mode-tab" data-panel="notes"><span class="tab-icon">📝</span><span class="tab-label">Заметки</span></button>
+    <button class="mode-tab" data-panel="notes"><span class="tab-icon">📝</span><span class="tab-label" data-i18n="tab_notes">Заметки</span></button>
     <button class="mode-tab" data-panel="files"><span class="tab-icon">📁</span><span class="tab-label" data-i18n="tab_files">Файлы</span></button>
-    <button class="mode-tab" data-panel="eiti-files"><span class="tab-icon">💾</span><span class="tab-label">EITI Файлы</span></button>
-    <button class="mode-tab" data-panel="diary" id="tab-diary"><span class="tab-icon">📓</span><span class="tab-label">Дневник</span></button>
+    <button class="mode-tab" data-panel="eiti-files"><span class="tab-icon">💾</span><span class="tab-label" data-i18n="tab_eiti_files">EITI Файлы</span></button>
+    <button class="mode-tab" data-panel="diary" id="tab-diary"><span class="tab-icon">📓</span><span class="tab-label" data-i18n="tab_diary">Дневник</span></button>
     <button class="mode-tab" data-panel="settings"><span class="tab-icon">⚙</span><span class="tab-label" data-i18n="tab_settings">Настройки</span></button>
   </nav>
 
@@ -1396,16 +1396,16 @@ main {
 
       <div class="input-bar">
         <div class="input-buttons" id="chatInputBtns">
-          <button class="attach-btn small" id="chatAttachBtn" title="Прикрепить файл">📎</button>
-          <button class="attach-btn small" id="chatClearBtn" title="Очистить чат">♻️</button>
-          <button class="attach-btn small" id="gearMenuBtn" title="Панель инструментов" style="display:none">⚙️</button>
-          <button class="attach-btn small" id="voiceMicBtn" title="Голосовой ввод (Grok Voice)" style="display:none">🎤</button>
-          <button class="attach-btn small" id="muteMicBtn" title="Mute/Unmute микрофон" style="display:none">🔇</button>
+          <button class="attach-btn small" id="chatAttachBtn" data-i18n-title="ttl_attach" title="Прикрепить файл">📎</button>
+          <button class="attach-btn small" id="chatClearBtn" data-i18n-title="ttl_clear_chat" title="Очистить чат">♻️</button>
+          <button class="attach-btn small" id="gearMenuBtn" data-i18n-title="ttl_chat_toolbar" title="Панель инструментов" style="display:none">⚙️</button>
+          <button class="attach-btn small" id="voiceMicBtn" data-i18n-title="ttl_voice_input" title="Голосовой ввод (Grok Voice)" style="display:none">🎤</button>
+          <button class="attach-btn small" id="muteMicBtn" data-i18n-title="ttl_mute_mic" title="Mute/Unmute микрофон" style="display:none">🔇</button>
         </div>
         <div class="input-wrap">
           <textarea id="chatInput" rows="1" placeholder="Сообщение... (Enter — отправить, Shift+Enter — перенос)"></textarea>
         </div>
-        <button class="send-btn" id="sendBtn" title="Отправить">
+        <button class="send-btn" id="sendBtn" data-i18n-title="ttl_send" title="Отправить">
           <svg width="18" height="18" viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
         </button>
       </div>
@@ -1420,8 +1420,8 @@ main {
           </select>
         </div>
         <div class="chat-header-right">
-          <button id="stopAgentBtn" class="btn-small" title="Остановить агента" onclick="stopAgentLoop()">⏹</button>
-          <button id="clearAgentBtn" class="btn-small" title="Очистить агента">🗑</button>
+          <button id="stopAgentBtn" class="btn-small" data-i18n-title="ttl_stop_agent" title="Остановить агента" onclick="stopAgentLoop()">⏹</button>
+          <button id="clearAgentBtn" class="btn-small" data-i18n-title="ttl_clear_agent" title="Очистить агента">🗑</button>
         </div>
       </div>
       <div class="chat-history" id="agentHistory">
@@ -1446,15 +1446,15 @@ main {
 
       <div class="input-bar">
         <div class="input-buttons" id="agentInputBtns">
-          <button class="attach-btn small" id="agentAttachBtn" title="Прикрепить файл">📎</button>
-          <button class="attach-btn small" id="agentClearBtn" title="Очистить поле ввода">♻️</button>
-          <button class="attach-btn small" id="agentGearBtn" title="Панель инструментов агента" style="display:none">⚙️</button>
-          <button class="attach-btn small" id="agentVoiceBtn" title="Голосовой ввод агента" style="display:none">🎤</button>
+          <button class="attach-btn small" id="agentAttachBtn" data-i18n-title="ttl_attach" title="Прикрепить файл">📎</button>
+          <button class="attach-btn small" id="agentClearBtn" data-i18n-title="ttl_clear_field" title="Очистить поле ввода">♻️</button>
+          <button class="attach-btn small" id="agentGearBtn" data-i18n-title="ttl_agent_toolbar" title="Панель инструментов агента" style="display:none">⚙️</button>
+          <button class="attach-btn small" id="agentVoiceBtn" data-i18n-title="ttl_voice_agent" title="Голосовой ввод агента" style="display:none">🎤</button>
         </div>
         <div class="input-wrap">
           <textarea id="agentInput" rows="1" placeholder="Задача для агента..."></textarea>
         </div>
-        <button class="send-btn" id="agentSendBtn" title="Запустить агента">
+        <button class="send-btn" id="agentSendBtn" data-i18n-title="ttl_run_agent" title="Запустить агента">
           <svg width="18" height="18" viewBox="0 0 24 24"><path d="M13 2.05v2.02c3.95.49 7 3.85 7 7.93 0 3.21-1.81 6-4.72 7.28L13 17v5h5l-1.22-1.22C19.91 19.07 22 15.76 22 12c0-5.18-3.95-9.45-9-9.95zM11 2.05C5.95 2.55 2 6.82 2 12c0 3.76 2.09 7.07 5.22 8.78L6 22h5v-5l-2.28 2.28C7.81 18 6 15.21 6 12c0-4.08 3.05-7.44 7-7.93V2.05z"/></svg>
         </button>
       </div>
@@ -1770,7 +1770,7 @@ main {
           <!-- Бюджет токенов на ответ -->
           <div class="field" id="token-budget-field">
             <label style="display:flex;justify-content:space-between;align-items:center">
-              <span>📊 Макс. токенов на ответ</span>
+              <span data-i18n="lbl_max_tokens">📊 Макс. токенов на ответ</span>
               <span id="token-budget-val" style="font-size:1rem;font-weight:700;color:var(--gold)">8 000</span>
             </label>
             <input type="range" id="cfgMaxTokens" min="1000" max="40000" step="1000" value="8000"
@@ -1782,7 +1782,7 @@ main {
               <span>20 000</span>
               <span>40 000</span>
             </div>
-            <div style="font-size:11px;color:var(--text-dim);margin-top:5px;line-height:1.5">
+            <div data-i18n-html="max_tokens_hint" style="font-size:11px;color:var(--text-dim);margin-top:5px;line-height:1.5">
               Gemini / DeepSeek / GPT-4.1 поддерживают 1M+ контекст.<br>
               Бюджет ответа независим от контекстного окна.
             </div>
@@ -1790,26 +1790,26 @@ main {
 
           <div class="field">
             <label data-i18n="lbl_web_search">🌐 Веб-поиск</label>
-            <div style="font-size:11px;opacity:.55;margin-bottom:8px;line-height:1.5">
+            <div data-i18n="web_search_auto_hint" style="font-size:11px;opacity:.55;margin-bottom:8px;line-height:1.5">
               Автоматически включается при запросах типа «найди», «что сейчас», «последние новости».
             </div>
             <div style="display:flex;flex-direction:column;gap:6px" id="search-provider-btns">
-              <button id="esp-btn-gemini" onclick="eitiSetSearchProvider('gemini-grounding')"
+              <button id="esp-btn-gemini" onclick="eitiSetSearchProvider('gemini-grounding')" data-i18n="btn_search_google"
                 style="padding:9px 12px;border-radius:10px;border:2px solid var(--gold-dim);background:var(--card-bg);color:var(--text);font-size:12px;font-weight:600;cursor:pointer;text-align:left;transition:all .15s">
                 🔵 Google Search (через Gemini ключ — бесплатно)
               </button>
-              <button id="esp-btn-tavily" onclick="eitiSetSearchProvider('tavily')"
+              <button id="esp-btn-tavily" onclick="eitiSetSearchProvider('tavily')" data-i18n="btn_search_tavily"
                 style="padding:9px 12px;border-radius:10px;border:2px solid var(--gold-dim);background:var(--card-bg);color:var(--text);font-size:12px;font-weight:600;cursor:pointer;text-align:left;transition:all .15s">
                 🔍 Tavily (1000 поисков/мес бесплатно)
               </button>
-              <button id="esp-btn-off" onclick="eitiSetSearchProvider('off')"
+              <button id="esp-btn-off" onclick="eitiSetSearchProvider('off')" data-i18n="btn_search_off"
                 style="padding:9px 12px;border-radius:10px;border:2px solid var(--gold-dim);background:var(--card-bg);color:var(--text);font-size:12px;font-weight:600;cursor:pointer;text-align:left;transition:all .15s">
                 🚫 Отключить
               </button>
             </div>
             <!-- Tavily ключ -->
             <div id="esp-tavily-key-wrap" style="display:none;margin-top:8px">
-              <div style="font-size:11px;opacity:.6;margin-bottom:4px">Tavily API ключ — <a href="https://app.tavily.com" target="_blank" style="color:var(--gold)">app.tavily.com</a></div>
+              <div style="font-size:11px;opacity:.6;margin-bottom:4px"><span data-i18n="tavily_key_hint">Tavily API ключ — </span><a href="https://app.tavily.com" target="_blank" style="color:var(--gold)">app.tavily.com</a></div>
               <div style="display:flex;gap:6px">
                 <input type="password" id="esp-tavily-key-input" placeholder="tvly-xxxxxxxx"
                   style="flex:1;padding:9px 10px;border-radius:10px;border:1px solid var(--gold-dim);background:var(--input-bg);color:var(--text);font-size:14px"
@@ -1817,7 +1817,7 @@ main {
                 <button onclick="(function(){document.getElementById('esp-tavily-key-input').value='';localStorage.removeItem('wiz_tavily_key');var s=document.getElementById('esp-tavily-status');if(s)s.style.display='none';showToast('Tavily ключ удалён');})()"
                   style="padding:0 12px;border-radius:10px;border:1px solid var(--gold-dim);background:transparent;color:var(--text-dim);font-size:17px;cursor:pointer">🗑</button>
               </div>
-              <button onclick="eitiVerifyTavilyKey()"
+              <button onclick="eitiVerifyTavilyKey()" data-i18n="btn_confirm_key"
                 style="margin-top:7px;width:100%;padding:9px;border-radius:10px;border:1px solid rgba(100,200,100,.4);background:rgba(100,200,100,.08);color:var(--text);font-size:13px;font-weight:600;cursor:pointer">
                 ✓ Подтвердить ключ
               </button>
@@ -1830,7 +1830,7 @@ main {
             <div class="input-with-btn">
               <input type="password" id="cfgApiKey" placeholder="sk-...">
               <button id="activateApiKey" class="btn-small" data-i18n="btn_activate">✓ Активировать</button>
-              <button id="clearApiKey" class="btn-small" title="Очистить API ключ">🗑</button>
+              <button id="clearApiKey" class="btn-small" data-i18n-title="ttl_clear_api" title="Очистить API ключ">🗑</button>
             </div>
             <div id="cfgApiKeyHint" style="font-size:11px;color:var(--text-dim);margin-top:4px;opacity:0.7"></div>
           </div>
@@ -1979,8 +1979,8 @@ main {
           </div>
           <div class="toggle-row">
             <div>
-              <div class="toggle-label">🤖 Tool-Use для Агента</div>
-              <div class="toggle-sub">Нативные function calls (DeepSeek / Gemini): чтение и запись заметок, файлов, памяти, задач в цикле до 10 шагов</div>
+              <div class="toggle-label" data-i18n="tog_tooluse">🤖 Tool-Use для Агента</div>
+              <div class="toggle-sub" data-i18n="tog_tooluse_sub">Нативные function calls (DeepSeek / Gemini): чтение и запись заметок, файлов, памяти, задач в цикле до 10 шагов</div>
             </div>
             <label class="toggle">
               <input type="checkbox" id="cfgAgentToolUse" checked onchange="localStorage.setItem('wiz_agent_tooluse', this.checked ? '1' : '0')">
@@ -2133,7 +2133,7 @@ main {
           <div class="card-title" data-i18n="card_agent_mgmt">⚡ Управление агентом</div>
           <p style="font-size:0.78rem;color:var(--text-dim);margin-bottom:10px" data-i18n="agent_mgmt_desc">Кнопки в строке ввода агента. ⚙️ открывает панель инструментов.</p>
           <div class="toggle-row">
-            <div><div class="toggle-label">📎 Прикрепить файл</div></div>
+            <div><div class="toggle-label" data-i18n="tog_attach">📎 Прикрепить файл</div></div>
             <label style="cursor:pointer"><input type="checkbox" id="agToolAttach" checked style="width:18px;height:18px;accent-color:var(--gold)"></label>
           </div>
           <div class="toggle-row">
@@ -2187,58 +2187,58 @@ main {
           <button id="clearPersonalMemory" class="btn-small btn-danger" style="width:100%;margin-top:10px" data-i18n="btn_clear_personal_memory">🗑 Очистить личную память</button>
           <hr style="border:none;border-top:1px solid rgba(201,149,42,0.15);margin:12px 0">
           <div class="toggle-row">
-            <div><div class="toggle-label">📔 Ежедневный дневник</div><div class="toggle-sub" id="diaryStatusSub">Выкл</div></div>
+            <div><div class="toggle-label" data-i18n="tog_diary">📔 Ежедневный дневник</div><div class="toggle-sub" id="diaryStatusSub" data-i18n="tog_diary_off">Выкл — записи не ведутся</div></div>
             <label style="cursor:pointer"><input type="checkbox" id="toggleDiary" style="width:18px;height:18px;accent-color:var(--gold)"></label>
           </div>
-          <button id="openDiaryBtn" class="btn-small" style="width:100%;margin-top:8px;background:rgba(201,149,42,0.1);border-color:var(--gold-dim)">📝 Открыть дневник</button>
+          <button id="openDiaryBtn" class="btn-small" data-i18n="btn_open_diary" style="width:100%;margin-top:8px;background:rgba(201,149,42,0.1);border-color:var(--gold-dim)">📝 Открыть дневник</button>
         </div>
 
         <!-- ═══ EITI Memory — Умная личная память (как в Velantrim) ═══ -->
         <div class="card" id="eiti-memory-card">
-          <div class="card-title">💜 EITI Memory — Умная память</div>
-          <p style="font-size:.8rem;color:var(--text-dim);line-height:1.5;margin-bottom:10px">
+          <div class="card-title" data-i18n="card_eiti_mem">💜 EITI Memory — Умная память</div>
+          <p data-i18n-html="eiti_mem_desc" style="font-size:.8rem;color:var(--text-dim);line-height:1.5;margin-bottom:10px">
             AI сохраняет факты о тебе через <code>[MEM_ADD:тег|текст]</code>.
             Хранится в IndexedDB, видно AI при каждом ответе.
           </p>
           <div class="toggle-row">
             <div>
-              <div class="toggle-label">Умная память включена</div>
-              <div class="toggle-sub" id="eitiMemStatusSub">AI читает и записывает память</div>
+              <div class="toggle-label" data-i18n="tog_eiti_mem_on">Умная память включена</div>
+              <div class="toggle-sub" id="eitiMemStatusSub" data-i18n="eiti_mem_sub">AI читает и записывает память</div>
             </div>
             <label style="cursor:pointer"><input type="checkbox" id="toggleEitiMemory" checked style="width:18px;height:18px;accent-color:var(--gold)"></label>
           </div>
-          <div id="eiti-mem-stats" style="padding:10px;border-radius:10px;background:var(--card-bg);font-size:.85rem;text-align:center;opacity:.85;margin:10px 0">⏳ Загрузка…</div>
+          <div id="eiti-mem-stats" data-i18n="loading" style="padding:10px;border-radius:10px;background:var(--card-bg);font-size:.85rem;text-align:center;opacity:.85;margin:10px 0">⏳ Загрузка…</div>
           <details style="font-size:.85rem;margin-bottom:8px">
-            <summary style="cursor:pointer;padding:6px 0;font-weight:700;color:var(--gold)">➕ Добавить запись вручную</summary>
+            <summary data-i18n="add_record_manual" style="cursor:pointer;padding:6px 0;font-weight:700;color:var(--gold)">➕ Добавить запись вручную</summary>
             <div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">
-              <textarea id="eitiMemAddText" rows="2" placeholder="Текст факта о пользователе…" style="padding:8px 10px;border-radius:10px;border:1px solid var(--gold-dim);background:var(--input-bg);color:var(--text);font-size:.85rem;width:100%;box-sizing:border-box;resize:vertical;font-family:inherit"></textarea>
-              <input id="eitiMemAddTag" placeholder="Тег: general / project / interest / value" style="padding:8px 10px;border-radius:10px;border:1px solid var(--gold-dim);background:var(--input-bg);color:var(--text);font-size:.82rem;width:100%;box-sizing:border-box">
-              <button onclick="eitiMemAddManual()" style="padding:10px;border-radius:12px;border:none;background:linear-gradient(145deg,#6a1a8a,#9c27b0);color:#fff;font-weight:700;font-size:.85rem;cursor:pointer">✅ Сохранить</button>
+              <textarea id="eitiMemAddText" rows="2" data-i18n-ph="ph_fact_text" placeholder="Текст факта о пользователе…" style="padding:8px 10px;border-radius:10px;border:1px solid var(--gold-dim);background:var(--input-bg);color:var(--text);font-size:.85rem;width:100%;box-sizing:border-box;resize:vertical;font-family:inherit"></textarea>
+              <input id="eitiMemAddTag" data-i18n-ph="ph_fact_tag" placeholder="Тег: general / project / interest / value" style="padding:8px 10px;border-radius:10px;border:1px solid var(--gold-dim);background:var(--input-bg);color:var(--text);font-size:.82rem;width:100%;box-sizing:border-box">
+              <button onclick="eitiMemAddManual()" data-i18n="btn_save_short" style="padding:10px;border-radius:12px;border:none;background:linear-gradient(145deg,#6a1a8a,#9c27b0);color:#fff;font-weight:700;font-size:.85rem;cursor:pointer">✅ Сохранить</button>
             </div>
           </details>
           <details style="font-size:.85rem;margin-bottom:8px">
-            <summary style="cursor:pointer;padding:6px 0;font-weight:700;color:var(--gold)">📋 Просмотр записей</summary>
+            <summary data-i18n="view_records" style="cursor:pointer;padding:6px 0;font-weight:700;color:var(--gold)">📋 Просмотр записей</summary>
             <div id="eitiMemList" style="font-size:.8rem;max-height:300px;overflow-y:auto;background:var(--input-bg);padding:8px;border-radius:8px;margin-top:8px"></div>
           </details>
           <div style="display:flex;gap:8px;margin-top:8px">
-            <button onclick="eitiMemExport()" class="btn-small" style="flex:1">📤 Экспорт</button>
-            <button onclick="document.getElementById('eitiMemImportFile').click()" class="btn-small" style="flex:1">📥 Импорт</button>
+            <button onclick="eitiMemExport()" class="btn-small" data-i18n="btn_export" style="flex:1">📤 Экспорт</button>
+            <button onclick="document.getElementById('eitiMemImportFile').click()" class="btn-small" data-i18n="btn_import" style="flex:1">📥 Импорт</button>
             <input type="file" id="eitiMemImportFile" accept=".json" style="display:none" onchange="eitiMemImportHandler(this)">
           </div>
-          <button onclick="if(confirm('Удалить ВСЮ EITI Memory?')){eitiMemClearAll();}" class="btn-small btn-danger" style="width:100%;margin-top:8px">🗑 Очистить всю память</button>
+          <button onclick="if(confirm(LANGS[currentLang].confirm_clear_eiti_mem||'Удалить ВСЮ EITI Memory?')){eitiMemClearAll();}" class="btn-small btn-danger" data-i18n="btn_clear_all_memory" style="width:100%;margin-top:8px">🗑 Очистить всю память</button>
         </div>
 
         <!-- ═══ Персональная Доска (как в Velantrim) ═══ -->
         <div class="card" id="eiti-board-card">
-          <div class="card-title">📋 Персональная Доска</div>
-          <p style="font-size:.8rem;color:var(--text-dim);line-height:1.5;margin-bottom:10px">
+          <div class="card-title" data-i18n="card_personal_board">📋 Персональная Доска</div>
+          <p data-i18n-html="personal_board_desc" style="font-size:.8rem;color:var(--text-dim);line-height:1.5;margin-bottom:10px">
             Kanban для задач. AI добавляет задачи через <code>[TASK_ADD:статус|название|описание|дата|приоритет|теги]</code>.
           </p>
-          <div id="eiti-board-stats" style="padding:10px;border-radius:10px;background:var(--card-bg);font-size:.85rem;text-align:center;opacity:.85;margin-bottom:10px">⏳ Загрузка…</div>
-          <button onclick="showEitiBoard()" style="width:100%;padding:12px;border-radius:12px;border:none;background:linear-gradient(145deg,#1a4a8a,#2563eb);color:#fff;font-weight:700;font-size:.9rem;cursor:pointer;margin-bottom:8px">📋 Открыть доску</button>
+          <div id="eiti-board-stats" data-i18n="loading" style="padding:10px;border-radius:10px;background:var(--card-bg);font-size:.85rem;text-align:center;opacity:.85;margin-bottom:10px">⏳ Загрузка…</div>
+          <button onclick="showEitiBoard()" data-i18n="btn_open_board" style="width:100%;padding:12px;border-radius:12px;border:none;background:linear-gradient(145deg,#1a4a8a,#2563eb);color:#fff;font-weight:700;font-size:.9rem;cursor:pointer;margin-bottom:8px">📋 Открыть доску</button>
           <div style="display:flex;gap:8px">
-            <button onclick="eitiBoardExport()" class="btn-small" style="flex:1">📤 Экспорт</button>
-            <button onclick="if(confirm('Удалить все задачи?')){eitiBoardClearAll();}" class="btn-small btn-danger" style="flex:1">🗑 Очистить</button>
+            <button onclick="eitiBoardExport()" class="btn-small" data-i18n="btn_export" style="flex:1">📤 Экспорт</button>
+            <button onclick="if(confirm(LANGS[currentLang].confirm_clear_board||'Удалить все задачи?')){eitiBoardClearAll();}" class="btn-small btn-danger" data-i18n="btn_clear_short" style="flex:1">🗑 Очистить</button>
           </div>
         </div>
 
@@ -2263,8 +2263,8 @@ main {
 
         <!-- Tab Visibility Card -->
         <div class="card" id="tab-visibility-card">
-          <div class="card-title">🧩 Модули — включить / отключить</div>
-          <p style="font-size:.78rem;color:var(--text-dim);margin-bottom:12px;line-height:1.5">Чат, Агент и Настройки всегда активны. Остальные модули можно скрыть чтобы не загромождать панель.</p>
+          <div class="card-title" data-i18n="card_modules">🧩 Модули — включить / отключить</div>
+          <p data-i18n="modules_desc" style="font-size:.78rem;color:var(--text-dim);margin-bottom:12px;line-height:1.5">Чат, Агент и Настройки всегда активны. Остальные модули можно скрыть чтобы не загромождать панель.</p>
           <div id="tab-toggles-list">
             <!-- генерируется tabVisibilityInit() -->
           </div>
@@ -2272,24 +2272,24 @@ main {
 
         <!-- TTS Settings Card -->
         <div class="card" id="tts-settings-card">
-          <div class="card-title">🔊 Озвучка текста (TTS)</div>
+          <div class="card-title" data-i18n="card_tts">🔊 Озвучка текста (TTS)</div>
 
           <div class="tts-grid2" style="margin-top:8px">
-            <button id="tprov-webspeech" class="tts-prov-btn tts-prov-active" onclick="setTTSProvider('webspeech')">🖥️ Системный<br><span style="font-size:10px;opacity:.6">офлайн · бесплатно</span></button>
-            <button id="tprov-gemini-tts" class="tts-prov-btn" onclick="setTTSProvider('gemini-tts')">🧠 Gemini TTS<br><span style="font-size:10px;opacity:.6">Google · 24kHz</span></button>
-            <button id="tprov-openai" class="tts-prov-btn" onclick="setTTSProvider('openai')">🤖 OpenAI TTS<br><span style="font-size:10px;opacity:.6">tts-1 / hd</span></button>
-            <button id="tprov-qwen-tts" class="tts-prov-btn" onclick="setTTSProvider('qwen-tts')">🟣 Qwen TTS<br><span style="font-size:10px;opacity:.6">CosyVoice · Aliyun</span></button>
+            <button id="tprov-webspeech" class="tts-prov-btn tts-prov-active" onclick="setTTSProvider('webspeech')"><span data-i18n="tts_system_label">🖥️ Системный</span><br><span style="font-size:10px;opacity:.6" data-i18n="tts_system_sub">офлайн · бесплатно</span></button>
+            <button id="tprov-gemini-tts" class="tts-prov-btn" onclick="setTTSProvider('gemini-tts')"><span data-i18n="tts_gemini_label">🧠 Gemini TTS</span><br><span style="font-size:10px;opacity:.6" data-i18n="tts_gemini_sub">Google · 24kHz</span></button>
+            <button id="tprov-openai" class="tts-prov-btn" onclick="setTTSProvider('openai')"><span data-i18n="tts_openai_label">🤖 OpenAI TTS</span><br><span style="font-size:10px;opacity:.6" data-i18n="tts_openai_sub">tts-1 / hd</span></button>
+            <button id="tprov-qwen-tts" class="tts-prov-btn" onclick="setTTSProvider('qwen-tts')"><span data-i18n="tts_qwen_label">🟣 Qwen TTS</span><br><span style="font-size:10px;opacity:.6" data-i18n="tts_qwen_sub">CosyVoice · Aliyun</span></button>
           </div>
 
           <!-- Системный (Web Speech) -->
           <div id="tts-section-webspeech" class="tts-section" style="display:flex">
-            <div style="font-size:.82rem;color:var(--text-dim);line-height:1.5">Встроенный синтез браузера — работает <strong>офлайн</strong>, без ключей.</div>
+            <div data-i18n-html="tts_webspeech_desc" style="font-size:.82rem;color:var(--text-dim);line-height:1.5">Встроенный синтез браузера — работает <strong>офлайн</strong>, без ключей.</div>
             <div class="tts-vgrid">
               <button id="twslang-ru" class="tts-vbtn tts-vbtn-active" onclick="setWSLang('ru-RU')">🇷🇺 RU</button>
               <button id="twslang-en" class="tts-vbtn" onclick="setWSLang('en-US')">🇬🇧 EN</button>
             </div>
             <div id="tts-browser-voices-list" class="tts-vgrid"></div>
-            <button onclick="refreshBrowserVoices()" style="padding:7px;border-radius:10px;border:1px solid var(--gold-dim);background:transparent;color:var(--text-dim);font-size:.8rem;cursor:pointer">🔄 Обновить голоса</button>
+            <button onclick="refreshBrowserVoices()" data-i18n="tts_refresh_voices" style="padding:7px;border-radius:10px;border:1px solid var(--gold-dim);background:transparent;color:var(--text-dim);font-size:.8rem;cursor:pointer">🔄 Обновить голоса</button>
           </div>
 
           <!-- Gemini TTS -->
@@ -2348,16 +2348,16 @@ main {
 
           <!-- TTS кеш -->
           <hr style="border:none;border-top:1px solid rgba(201,149,42,.15);margin:12px 0">
-          <div style="font-size:.78rem;font-weight:700;color:var(--gold);letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px">🗂 Кеш озвучки (офлайн)</div>
-          <div style="font-size:11px;opacity:.55;margin-bottom:8px;line-height:1.5">Аудио сохраняется в IndexedDB. Повторный клик 🔊 — мгновенно, без API, даже офлайн.</div>
+          <div data-i18n="tts_cache_title" style="font-size:.78rem;font-weight:700;color:var(--gold);letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px">🗂 Кеш озвучки (офлайн)</div>
+          <div data-i18n="tts_cache_hint" style="font-size:11px;opacity:.55;margin-bottom:8px;line-height:1.5">Аудио сохраняется в IndexedDB. Повторный клик 🔊 — мгновенно, без API, даже офлайн.</div>
           <div class="tts-cache-stats">
-            <div class="tts-cache-stat"><div class="val" id="tts-cache-count">—</div><div class="lbl">записей</div></div>
-            <div class="tts-cache-stat"><div class="val" id="tts-cache-size">—</div><div class="lbl">МБ</div></div>
-            <div class="tts-cache-stat"><div class="val" id="tts-cache-oldest" style="font-size:.8rem">—</div><div class="lbl">старейший</div></div>
+            <div class="tts-cache-stat"><div class="val" id="tts-cache-count">—</div><div class="lbl" data-i18n="tts_cache_records">записей</div></div>
+            <div class="tts-cache-stat"><div class="val" id="tts-cache-size">—</div><div class="lbl" data-i18n="tts_cache_mb">МБ</div></div>
+            <div class="tts-cache-stat"><div class="val" id="tts-cache-oldest" style="font-size:.8rem">—</div><div class="lbl" data-i18n="tts_cache_oldest">старейший</div></div>
           </div>
           <div style="display:flex;gap:8px">
-            <button onclick="ttsCacheClearAll()" style="flex:1;padding:9px;border-radius:10px;border:1px solid rgba(255,80,80,.3);background:rgba(255,80,80,.06);color:#ff8888;font-size:12px;cursor:pointer">🗑 Очистить</button>
-            <button onclick="ttsCacheRefreshStats()" style="flex:1;padding:9px;border-radius:10px;border:1px solid var(--gold-dim);background:transparent;color:var(--text-dim);font-size:12px;cursor:pointer">🔄 Обновить</button>
+            <button onclick="ttsCacheClearAll()" data-i18n="tts_cache_clear" style="flex:1;padding:9px;border-radius:10px;border:1px solid rgba(255,80,80,.3);background:rgba(255,80,80,.06);color:#ff8888;font-size:12px;cursor:pointer">🗑 Очистить</button>
+            <button onclick="ttsCacheRefreshStats()" data-i18n="tts_cache_refresh" style="flex:1;padding:9px;border-radius:10px;border:1px solid var(--gold-dim);background:transparent;color:var(--text-dim);font-size:12px;cursor:pointer">🔄 Обновить</button>
           </div>
         </div>
         <!-- /TTS Settings Card -->
@@ -2369,32 +2369,32 @@ main {
     <section class="panel" id="panel-diary">
       <div class="rne-header">
         <div class="rne-header-row">
-          <div class="rne-title">📓 Дневник</div>
+          <div class="rne-title" data-i18n="diary_title">📓 Дневник</div>
           <div style="display:flex;align-items:center;gap:4px;flex-wrap:nowrap;overflow:hidden">
             <div class="rne-model-badge" id="rne-model-badge" onclick="rneShowModelInfo()">
               <span id="rne-model-dot" style="width:7px;height:7px;border-radius:50%;background:#666;flex-shrink:0"></span>
               <span id="rne-model-name">–</span>
             </div>
-            <button class="rne-hbtn blue" onclick="rneAnalyzeHistory()" title="Анализ истории чатов">🔍</button>
-            <button class="rne-hbtn blue" onclick="rneExtractNow()" title="Извлечь из текущего чата">⚡</button>
-            <button class="rne-hbtn" onclick="rneExport()" title="Экспорт">📤</button>
-            <button class="rne-hbtn danger" onclick="rneClear()" title="Очистить">🗑</button>
+            <button class="rne-hbtn blue" onclick="rneAnalyzeHistory()" data-i18n-title="diary_ttl_analyze" title="Анализ истории чатов">🔍</button>
+            <button class="rne-hbtn blue" onclick="rneExtractNow()" data-i18n-title="diary_ttl_extract" title="Извлечь из текущего чата">⚡</button>
+            <button class="rne-hbtn" onclick="rneExport()" data-i18n-title="diary_ttl_export" title="Экспорт">📤</button>
+            <button class="rne-hbtn danger" onclick="rneClear()" data-i18n-title="diary_ttl_clear" title="Очистить">🗑</button>
           </div>
         </div>
       </div>
       <div class="rne-tabs">
-        <button class="rne-stab active" data-section="goals"     onclick="rneSwitchSection('goals')">🎯 Цели</button>
-        <button class="rne-stab"        data-section="facts"     onclick="rneSwitchSection('facts')">💡 Факты</button>
-        <button class="rne-stab"        data-section="questions" onclick="rneSwitchSection('questions')">❓ Вопросы</button>
-        <button class="rne-stab"        data-section="gaps"      onclick="rneSwitchSection('gaps')">🕳 Пробелы</button>
-        <button class="rne-stab"        data-section="solutions" onclick="rneSwitchSection('solutions')">✅ Решения</button>
+        <button class="rne-stab active" data-section="goals"     onclick="rneSwitchSection('goals')"     data-i18n="diary_tab_goals">🎯 Цели</button>
+        <button class="rne-stab"        data-section="facts"     onclick="rneSwitchSection('facts')"     data-i18n="diary_tab_facts">💡 Факты</button>
+        <button class="rne-stab"        data-section="questions" onclick="rneSwitchSection('questions')" data-i18n="diary_tab_questions">❓ Вопросы</button>
+        <button class="rne-stab"        data-section="gaps"      onclick="rneSwitchSection('gaps')"      data-i18n="diary_tab_gaps">🕳 Пробелы</button>
+        <button class="rne-stab"        data-section="solutions" onclick="rneSwitchSection('solutions')" data-i18n="diary_tab_solutions">✅ Решения</button>
       </div>
       <div class="rne-scroll" id="rne-scroll-area">
         <div id="rne-status"></div>
         <div id="rne-empty">
           <div style="font-size:48px;margin-bottom:12px">📓</div>
-          <div style="font-size:14px;font-weight:600">Дневник пуст</div>
-          <div style="font-size:12px;margin-top:6px;line-height:1.5">Нажми ⚡ для анализа текущего чата или 🔍 для истории.</div>
+          <div data-i18n="diary_empty_title" style="font-size:14px;font-weight:600">Дневник пуст</div>
+          <div data-i18n="diary_empty_hint" style="font-size:12px;margin-top:6px;line-height:1.5">Нажми ⚡ для анализа текущего чата или 🔍 для истории.</div>
         </div>
         <div id="rne-items-list"></div>
         <div id="rne-chat-list" style="padding:0 12px 120px"></div>
@@ -5817,7 +5817,7 @@ function _orUpdateBlockVisibility() {
     groq:        { ph: 'gsk_...', hint: '🔑 console.groq.com/keys',           label: 'Groq API Key' },
     grok:        { ph: 'xai-...', hint: '🔑 x.ai/api',                        label: 'xAI Grok API Key' },
     openrouter:  { ph: 'sk-or-v1-...', hint: '🔑 openrouter.ai/settings/keys', label: 'OpenRouter API Key' },
-    ollama:      { ph: 'не нужен', hint: '🖥 Локальный сервер — ключ не требуется', label: 'API Key' },
+    ollama:      { ph: (LANGS[currentLang]?.ph_api_key_ollama || 'не нужен'), hint: (LANGS[currentLang]?.hint_api_key_ollama || '🖥 Локальный сервер — ключ не требуется'), label: 'API Key' },
   };
   const info = placeholders[prov] || { ph: 'API Key...', hint: '', label: 'API Key' };
   if (keyInput) keyInput.placeholder = info.ph;
@@ -6076,8 +6076,9 @@ function _eitiUpdateSearchProviderUI(provider) {
     if (ti && !ti.value) { const s = localStorage.getItem('wiz_tavily_key'); if (s) ti.value = _deobfKey(s); }
   }
   const lbl = document.getElementById('esp-status-label');
-  const labels = { 'gemini-grounding':'🔵 Google Search', 'tavily':'🔍 Tavily', 'off':'🚫 Выключен' };
-  if (lbl) lbl.textContent = 'Активен: ' + (labels[prov] || prov);
+  const tDict = LANGS[currentLang] || LANGS.ru;
+  const labels = { 'gemini-grounding':'🔵 Google Search', 'tavily':'🔍 Tavily', 'off': (tDict.search_provider_off || '🚫 Выключен') };
+  if (lbl) lbl.textContent = (tDict.search_active_prefix || 'Активен: ') + (labels[prov] || prov);
 }
 
 function eitiVerifyTavilyKey() {
@@ -6216,7 +6217,7 @@ const toggleDiary = document.getElementById('toggleDiary');
 const diaryStatusSub = document.getElementById('diaryStatusSub');
 
 function applyDiaryState(enabled) {
-  if (diaryStatusSub) diaryStatusSub.textContent = enabled ? 'Вкл — записи сохраняются' : 'Выкл — записи не ведутся';
+  if (diaryStatusSub) { const _dt = LANGS[currentLang] || LANGS.ru; diaryStatusSub.textContent = enabled ? (_dt.tog_diary_on || 'Вкл — записи сохраняются') : (_dt.tog_diary_off || 'Выкл — записи не ведутся'); }
   if (toggleDiary) toggleDiary.checked = enabled;
 }
 
@@ -6892,6 +6893,94 @@ const LANGS = {
 <p style="margin-bottom:6px"><strong>Файлы:</strong> PDF, TXT, DOCX, изображения — RAG-контекст через чанки.</p>
 <p style="color:var(--text-dim);font-size:0.78rem;margin-top:10px;padding-top:10px;border-top:1px solid var(--toggle-border)">💡 ИИ видит эту информацию и может давать советы по улучшению.</p>`,
     memInfoText:`Память о проектах хранится в IndexedDB локально в браузере.<br>Факты проходят через ESM: <strong style="color:var(--gold-dim)">Observed → Validated → Collapsed</strong>.`,
+    // v1.7.8 — extra translations
+    tab_notes:'Заметки', tab_projects:'Проекты', tab_eiti_files:'EITI Файлы', tab_diary:'Дневник',
+    ttl_attach:'Прикрепить файл', ttl_clear_chat:'Очистить чат', ttl_clear_field:'Очистить поле ввода',
+    ttl_clear_api:'Очистить API ключ', ttl_send:'Отправить', ttl_stop_agent:'Остановить агента',
+    ttl_clear_agent:'Очистить агента', ttl_run_agent:'Запустить агента',
+    ttl_agent_toolbar:'Панель инструментов агента', ttl_chat_toolbar:'Панель инструментов',
+    ttl_voice_input:'Голосовой ввод (Grok Voice)', ttl_mute_mic:'Mute/Unmute микрофон',
+    ttl_voice_agent:'Голосовой ввод агента',
+    lbl_max_tokens:'📊 Макс. токенов на ответ',
+    max_tokens_hint:'Gemini / DeepSeek / GPT-4.1 поддерживают 1M+ контекст.<br>Бюджет ответа независим от контекстного окна.',
+    web_search_auto_hint:'Автоматически включается при запросах типа «найди», «что сейчас», «последние новости».',
+    btn_search_google:'🔵 Google Search (через Gemini ключ — бесплатно)',
+    btn_search_tavily:'🔍 Tavily (1000 поисков/мес бесплатно)',
+    btn_search_off:'🚫 Отключить',
+    search_active_prefix:'Активен: ',
+    search_provider_off:'🚫 Выключен',
+    tavily_key_hint:'Tavily API ключ — ',
+    btn_confirm_key:'✓ Подтвердить ключ',
+    ph_api_key_ollama:'не нужен',
+    hint_api_key_ollama:'🖥 Локальный сервер — ключ не требуется',
+    ds_mode_title:'🐋 DeepSeek — режим мышления',
+    ds_flash_label:'⚡ Flash', ds_flash_sub:'быстро, дёшево',
+    ds_pro_label:'🔬 Pro', ds_pro_sub:'мышление',
+    ds_high_label:'🧠 Think', ds_high_sub:'глубокое, 8K бюджет',
+    ds_xhigh_label:'🔮 XHigh', ds_xhigh_sub:'экстрем, 20K бюджет',
+    or_section_title:'🔀 OpenRouter API Key',
+    or_section_hint:'Единый доступ к 300+ моделям (Claude, GPT, Llama, Mistral и др.). Получить ключ: openrouter.ai/settings/keys',
+    or_model_label:'🧩 Модель',
+    tog_tooluse:'🤖 Tool-Use для Агента',
+    tog_tooluse_sub:'Нативные function calls (DeepSeek / Gemini): чтение и запись заметок, файлов, памяти, задач в цикле до 10 шагов',
+    tog_diary:'📔 Ежедневный дневник',
+    tog_diary_off:'Выкл — записи не ведутся',
+    tog_diary_on:'Вкл — авто-записи в дневник',
+    btn_open_diary:'📝 Открыть дневник',
+    card_eiti_mem:'💜 EITI Memory — Умная память',
+    eiti_mem_desc:'AI сохраняет факты о тебе через <code>[MEM_ADD:тег|текст]</code>. Хранится в IndexedDB, видно AI при каждом ответе.',
+    tog_eiti_mem_on:'Умная память включена',
+    eiti_mem_sub:'AI читает и записывает память',
+    loading:'⏳ Загрузка…',
+    add_record_manual:'➕ Добавить запись вручную',
+    ph_fact_text:'Текст факта о пользователе…',
+    ph_fact_tag:'Тег: general / project / interest / value',
+    btn_save_short:'✅ Сохранить',
+    view_records:'📋 Просмотр записей',
+    btn_export:'📤 Экспорт',
+    btn_import:'📥 Импорт',
+    btn_clear_all_memory:'🗑 Очистить всю память',
+    confirm_clear_eiti_mem:'Удалить ВСЮ EITI Memory?',
+    card_personal_board:'📋 Персональная Доска',
+    personal_board_desc:'Kanban для задач. AI добавляет задачи через <code>[TASK_ADD:статус|название|описание|дата|приоритет|теги]</code>.',
+    btn_open_board:'📋 Открыть доску',
+    btn_clear_short:'🗑 Очистить',
+    confirm_clear_board:'Удалить все задачи?',
+    card_modules:'🧩 Модули — включить / отключить',
+    modules_desc:'Чат, Агент и Настройки всегда активны. Остальные модули можно скрыть чтобы не загромождать панель.',
+    btn_show_all:'✓ Показать все',
+    btn_hide_all:'🧹 Скрыть все',
+    toast_all_modules_on:'Все модули включены',
+    toast_optional_hidden:'Необязательные модули скрыты',
+    mod_chat:'Чат', mod_chat_desc:'Основной чат с AI',
+    mod_agent:'Агент', mod_agent_desc:'Пошаговый агент для задач',
+    mod_memory:'Память', mod_memory_desc:'Умная память: EITI Memory, L2/L3, AI-анализ',
+    mod_notes:'Заметки', mod_notes_desc:'Цветные карточки, AI создаёт заметки',
+    mod_eiti_files:'EITI Файлы', mod_eiti_files_desc:'Создание и редактирование файлов',
+    mod_projects:'Проекты', mod_projects_desc:'Персональные проекты с контекстом',
+    mod_history:'История', mod_history_desc:'Все чаты сгруппированные, поиск',
+    mod_files:'Файлы', mod_files_desc:'RAG: PDF, DOCX, TXT для контекста AI',
+    mod_diary:'Дневник', mod_diary_desc:'Дневник мыслей и записей',
+    mod_settings:'Настройки', mod_settings_desc:'Провайдер, ключ, темы, модули',
+    card_tts:'🔊 Озвучка текста (TTS)',
+    tts_system_label:'🖥️ Системный', tts_system_sub:'офлайн · бесплатно',
+    tts_gemini_label:'🧠 Gemini TTS', tts_gemini_sub:'Google · 24kHz',
+    tts_openai_label:'🤖 OpenAI TTS', tts_openai_sub:'tts-1 / hd',
+    tts_qwen_label:'🟣 Qwen TTS', tts_qwen_sub:'CosyVoice · Aliyun',
+    tts_webspeech_desc:'Встроенный синтез браузера — работает <strong>офлайн</strong>, без ключей.',
+    tts_refresh_voices:'🔄 Обновить голоса',
+    tts_cache_title:'🗂 Кеш озвучки (офлайн)',
+    tts_cache_hint:'Аудио сохраняется в IndexedDB. Повторный клик 🔊 — мгновенно, без API, даже офлайн.',
+    tts_cache_records:'записей', tts_cache_mb:'МБ', tts_cache_oldest:'старейший',
+    tts_cache_clear:'🗑 Очистить', tts_cache_refresh:'🔄 Обновить',
+    diary_title:'📓 Дневник',
+    diary_tab_goals:'🎯 Цели', diary_tab_facts:'💡 Факты', diary_tab_questions:'❓ Вопросы',
+    diary_tab_gaps:'🕳 Пробелы', diary_tab_solutions:'✅ Решения',
+    diary_empty_title:'Дневник пуст',
+    diary_empty_hint:'Нажми ⚡ для анализа текущего чата или 🔍 для истории.',
+    diary_ttl_analyze:'Анализ истории чатов', diary_ttl_extract:'Извлечь из текущего чата',
+    diary_ttl_export:'Экспорт', diary_ttl_clear:'Очистить',
+    api_status_not_checked:'Не проверено',
   },
   en: {
     tab_chat:'Chat', tab_agent:'Agent', tab_memory:'Memory',
@@ -6984,6 +7073,94 @@ const LANGS = {
 <p style="margin-bottom:6px"><strong>Files:</strong> PDF, TXT, DOCX, images — RAG context via chunking.</p>
 <p style="color:var(--text-dim);font-size:0.78rem;margin-top:10px;padding-top:10px;border-top:1px solid var(--toggle-border)">💡 AI sees this info and can suggest improvements.</p>`,
     memInfoText:`Project memory is stored in IndexedDB locally in the browser.<br>Facts go through ESM: <strong style="color:var(--gold-dim)">Observed → Validated → Collapsed</strong>.`,
+    // v1.7.8 — extra translations
+    tab_notes:'Notes', tab_projects:'Projects', tab_eiti_files:'EITI Files', tab_diary:'Diary',
+    ttl_attach:'Attach file', ttl_clear_chat:'Clear chat', ttl_clear_field:'Clear input',
+    ttl_clear_api:'Clear API key', ttl_send:'Send', ttl_stop_agent:'Stop agent',
+    ttl_clear_agent:'Clear agent', ttl_run_agent:'Run agent',
+    ttl_agent_toolbar:'Agent toolbar', ttl_chat_toolbar:'Toolbar',
+    ttl_voice_input:'Voice input (Grok Voice)', ttl_mute_mic:'Mute/Unmute mic',
+    ttl_voice_agent:'Agent voice input',
+    lbl_max_tokens:'📊 Max tokens per response',
+    max_tokens_hint:'Gemini / DeepSeek / GPT-4.1 support 1M+ context.<br>Response budget is independent of the context window.',
+    web_search_auto_hint:'Auto-enabled for queries like "find", "what is now", "latest news".',
+    btn_search_google:'🔵 Google Search (via Gemini key — free)',
+    btn_search_tavily:'🔍 Tavily (1000 searches/month free)',
+    btn_search_off:'🚫 Disable',
+    search_active_prefix:'Active: ',
+    search_provider_off:'🚫 Off',
+    tavily_key_hint:'Tavily API key — ',
+    btn_confirm_key:'✓ Confirm key',
+    ph_api_key_ollama:'not required',
+    hint_api_key_ollama:'🖥 Local server — no key needed',
+    ds_mode_title:'🐋 DeepSeek — thinking mode',
+    ds_flash_label:'⚡ Flash', ds_flash_sub:'fast, cheap',
+    ds_pro_label:'🔬 Pro', ds_pro_sub:'thinking',
+    ds_high_label:'🧠 Think', ds_high_sub:'deep, 8K budget',
+    ds_xhigh_label:'🔮 XHigh', ds_xhigh_sub:'extreme, 20K budget',
+    or_section_title:'🔀 OpenRouter API Key',
+    or_section_hint:'Unified access to 300+ models (Claude, GPT, Llama, Mistral, etc.). Get key: openrouter.ai/settings/keys',
+    or_model_label:'🧩 Model',
+    tog_tooluse:'🤖 Tool-Use for Agent',
+    tog_tooluse_sub:'Native function calls (DeepSeek / Gemini): read and write notes, files, memory, tasks in a loop up to 10 steps',
+    tog_diary:'📔 Daily diary',
+    tog_diary_off:'Off — no entries logged',
+    tog_diary_on:'On — auto-logging entries',
+    btn_open_diary:'📝 Open diary',
+    card_eiti_mem:'💜 EITI Memory — Smart memory',
+    eiti_mem_desc:'AI saves facts about you via <code>[MEM_ADD:tag|text]</code>. Stored in IndexedDB, visible to AI in every response.',
+    tog_eiti_mem_on:'Smart memory enabled',
+    eiti_mem_sub:'AI reads and writes memory',
+    loading:'⏳ Loading…',
+    add_record_manual:'➕ Add entry manually',
+    ph_fact_text:'Fact about the user…',
+    ph_fact_tag:'Tag: general / project / interest / value',
+    btn_save_short:'✅ Save',
+    view_records:'📋 View entries',
+    btn_export:'📤 Export',
+    btn_import:'📥 Import',
+    btn_clear_all_memory:'🗑 Clear all memory',
+    confirm_clear_eiti_mem:'Delete ALL EITI Memory?',
+    card_personal_board:'📋 Personal Board',
+    personal_board_desc:'Kanban for tasks. AI adds tasks via <code>[TASK_ADD:status|title|description|date|priority|tags]</code>.',
+    btn_open_board:'📋 Open board',
+    btn_clear_short:'🗑 Clear',
+    confirm_clear_board:'Delete all tasks?',
+    card_modules:'🧩 Modules — enable / disable',
+    modules_desc:'Chat, Agent and Settings are always active. Other modules can be hidden to declutter the panel.',
+    btn_show_all:'✓ Show all',
+    btn_hide_all:'🧹 Hide all',
+    toast_all_modules_on:'All modules enabled',
+    toast_optional_hidden:'Optional modules hidden',
+    mod_chat:'Chat', mod_chat_desc:'Main chat with AI',
+    mod_agent:'Agent', mod_agent_desc:'Step-by-step task agent',
+    mod_memory:'Memory', mod_memory_desc:'Smart memory: EITI Memory, L2/L3, AI analysis',
+    mod_notes:'Notes', mod_notes_desc:'Color cards, AI creates notes',
+    mod_eiti_files:'EITI Files', mod_eiti_files_desc:'Create and edit files',
+    mod_projects:'Projects', mod_projects_desc:'Personal projects with context',
+    mod_history:'History', mod_history_desc:'All chats grouped, search',
+    mod_files:'Files', mod_files_desc:'RAG: PDF, DOCX, TXT for AI context',
+    mod_diary:'Diary', mod_diary_desc:'Diary of thoughts and notes',
+    mod_settings:'Settings', mod_settings_desc:'Provider, key, themes, modules',
+    card_tts:'🔊 Text-to-Speech (TTS)',
+    tts_system_label:'🖥️ System', tts_system_sub:'offline · free',
+    tts_gemini_label:'🧠 Gemini TTS', tts_gemini_sub:'Google · 24kHz',
+    tts_openai_label:'🤖 OpenAI TTS', tts_openai_sub:'tts-1 / hd',
+    tts_qwen_label:'🟣 Qwen TTS', tts_qwen_sub:'CosyVoice · Aliyun',
+    tts_webspeech_desc:'Built-in browser synthesis — works <strong>offline</strong>, no keys.',
+    tts_refresh_voices:'🔄 Refresh voices',
+    tts_cache_title:'🗂 TTS cache (offline)',
+    tts_cache_hint:'Audio is saved in IndexedDB. Tapping 🔊 again — instant, no API, even offline.',
+    tts_cache_records:'entries', tts_cache_mb:'MB', tts_cache_oldest:'oldest',
+    tts_cache_clear:'🗑 Clear', tts_cache_refresh:'🔄 Refresh',
+    diary_title:'📓 Diary',
+    diary_tab_goals:'🎯 Goals', diary_tab_facts:'💡 Facts', diary_tab_questions:'❓ Questions',
+    diary_tab_gaps:'🕳 Gaps', diary_tab_solutions:'✅ Solutions',
+    diary_empty_title:'Diary is empty',
+    diary_empty_hint:'Tap ⚡ to analyze current chat or 🔍 for history.',
+    diary_ttl_analyze:'Analyze chat history', diary_ttl_extract:'Extract from current chat',
+    diary_ttl_export:'Export', diary_ttl_clear:'Clear',
+    api_status_not_checked:'Not checked',
   }
 };
 
@@ -6997,15 +7174,29 @@ function applyLang(lang) {
     const v = t[el.dataset.i18n];
     if (v !== undefined) el.textContent = v;
   });
+  // innerHTML (для строк с <code>, <br> и т.п.)
+  document.querySelectorAll('[data-i18n-html]').forEach(el => {
+    const v = t[el.dataset.i18nHtml];
+    if (v !== undefined) el.innerHTML = v;
+  });
   // Placeholder text
   document.querySelectorAll('[data-i18n-ph]').forEach(el => {
     const v = t[el.dataset.i18nPh];
     if (v !== undefined) el.placeholder = v;
   });
+  // Title attribute
+  document.querySelectorAll('[data-i18n-title]').forEach(el => {
+    const v = t[el.dataset.i18nTitle];
+    if (v !== undefined) el.title = v;
+  });
   // Rich HTML sections
   const sysEl = document.getElementById('sysInfoContent');
   if (sysEl && t.sysInfoContent) sysEl.innerHTML = t.sysInfoContent;
   const memEl = document.getElementById('memInfoText'); if (memEl && t.memInfoText) memEl.innerHTML = t.memInfoText;
+  // Перерендер динамических списков
+  if (typeof tabVisibilityInit === 'function' && document.getElementById('tab-toggles-list')) tabVisibilityInit();
+  if (typeof _eitiUpdateSearchProviderUI === 'function') { try { _eitiUpdateSearchProviderUI(); } catch(e){} }
+  if (typeof _setProviderUI === 'function') { try { const p = document.getElementById('cfgProvider')?.value; if (p) _setProviderUI(p); } catch(e){} }
   if (db) dbPut('config', { id: 'lang', key: 'lang', value: lang });
 }
 
@@ -7084,16 +7275,21 @@ function openGearSheet() {
   const voiceActive = typeof grokRecording !== 'undefined' && grokRecording;
   const mutedNow    = typeof grokMuted !== 'undefined' && grokMuted;
 
+  const _gt = LANGS[currentLang] || LANGS.ru;
   const items = [
-    { id: 'gearAttach',   icon: '📎', label: 'Прикрепить файл',     action: () => document.getElementById('chatAttachBtn')?.click() },
-    { id: 'gearThink',    icon: '💡', label: 'Режим «думать»',       action: toggleThinkMode },
-    { id: 'gearCopy',     icon: '📋', label: 'Копировать чат',       action: copyChatToClipboard },
-    { id: 'gearClearChat',icon: '🗑️', label: 'Очистить чат',         action: clearChatConfirm },
+    { id: 'gearAttach',   icon: '📎', label: (_gt.ttl_attach || 'Прикрепить файл'),     action: () => document.getElementById('chatAttachBtn')?.click() },
+    { id: 'gearThink',    icon: '💡', label: (currentLang==='en' ? 'Think mode' : 'Режим «думать»'),       action: toggleThinkMode },
+    { id: 'gearCopy',     icon: '📋', label: (currentLang==='en' ? 'Copy chat' : 'Копировать чат'),       action: copyChatToClipboard },
+    { id: 'gearClearChat',icon: '🗑️', label: (_gt.ttl_clear_chat || 'Очистить чат'),         action: clearChatConfirm },
     { id: 'gearVoice',    icon: voiceActive ? '⏹️' : '🎙',
-                          label: voiceActive ? 'Grok Voice — остановить' : 'Grok Voice — запустить',
+                          label: voiceActive
+                            ? (currentLang==='en' ? 'Grok Voice — stop' : 'Grok Voice — остановить')
+                            : (currentLang==='en' ? 'Grok Voice — start' : 'Grok Voice — запустить'),
                           action: () => voiceActive ? stopGrokVoice() : openGrokVoiceSession() },
     { id: 'gearMute',     icon: mutedNow ? '🎤' : '🔇',
-                          label: mutedNow ? 'Включить микрофон' : 'Выключить микрофон (mute)',
+                          label: mutedNow
+                            ? (currentLang==='en' ? 'Unmute microphone' : 'Включить микрофон')
+                            : (currentLang==='en' ? 'Mute microphone' : 'Выключить микрофон (mute)'),
                           action: toggleMicMute },
   ];
   items.forEach(item => {
@@ -7183,11 +7379,11 @@ const autoMemoryStatus = document.getElementById('autoMemoryStatus');
 if (toggleAutoMemory) {
   const autoEnabled = localStorage.getItem('wizardAutoMemory') === 'true';
   toggleAutoMemory.checked = autoEnabled;
-  if (autoMemoryStatus) autoMemoryStatus.textContent = autoEnabled ? 'Вкл — факты извлекаются автоматически' : 'Выкл — только /запомни';
+  if (autoMemoryStatus) { const _amt = LANGS[currentLang] || LANGS.ru; autoMemoryStatus.textContent = autoEnabled ? (currentLang==='en' ? 'On — facts auto-extracted' : 'Вкл — факты извлекаются автоматически') : (_amt.tog_auto_memory_off || 'Выкл — только /запомни'); }
   toggleAutoMemory.addEventListener('change', () => {
     const v = toggleAutoMemory.checked;
     localStorage.setItem('wizardAutoMemory', String(v));
-    if (autoMemoryStatus) autoMemoryStatus.textContent = v ? 'Вкл — факты извлекаются автоматически' : 'Выкл — только /запомни';
+    if (autoMemoryStatus) { const _amt = LANGS[currentLang] || LANGS.ru; autoMemoryStatus.textContent = v ? (currentLang==='en' ? 'On — facts auto-extracted' : 'Вкл — факты извлекаются автоматически') : (_amt.tog_auto_memory_off || 'Выкл — только /запомни'); }
   });
 }
 
@@ -7426,12 +7622,13 @@ function openAgentGearSheet() {
   const cfg = JSON.parse(localStorage.getItem('wizardAgentTools') || '{}');
   const container = document.getElementById('agentGearItems');
   container.innerHTML = '';
+  const _agt = LANGS[currentLang] || LANGS.ru;
   const actions = [
-    { id:'agGearAttach',    icon:'📎', label:'Прикрепить файл',     fn: () => document.getElementById('agentAttachBtn')?.click() },
-    { id:'agGearThink',     icon:'💡', label:'Режим «думать»',       fn: toggleThinkMode },
-    { id:'agGearCopy',      icon:'📋', label:'Копировать результат', fn: copyAgentResult },
-    { id:'agGearClear',     icon:'🗑️', label:'Очистить сессию',      fn: clearAgentConfirm },
-    { id:'agGearTemplates', icon:'📝', label:'Шаблоны задач',        fn: openAgentTemplates },
+    { id:'agGearAttach',    icon:'📎', label:(_agt.ttl_attach || 'Прикрепить файл'),     fn: () => document.getElementById('agentAttachBtn')?.click() },
+    { id:'agGearThink',     icon:'💡', label:(currentLang==='en' ? 'Think mode' : 'Режим «думать»'),       fn: toggleThinkMode },
+    { id:'agGearCopy',      icon:'📋', label:(currentLang==='en' ? 'Copy result' : 'Копировать результат'), fn: copyAgentResult },
+    { id:'agGearClear',     icon:'🗑️', label:(currentLang==='en' ? 'Clear session' : 'Очистить сессию'),      fn: clearAgentConfirm },
+    { id:'agGearTemplates', icon:'📝', label:(currentLang==='en' ? 'Task templates' : 'Шаблоны задач'),        fn: openAgentTemplates },
   ];
   actions.forEach(item => {
     if (cfg[item.id] === false) return;
@@ -7900,17 +8097,18 @@ window.rneRender = rneRender;
 var TAB_VIS_KEY = 'wiz_tab_visibility';
 
 // Все вкладки с мета-данными
+// v1.7.8: переводы берутся из LANGS[currentLang] во время рендера
 var TAB_DEFS = [
-  { panel:'chat',       icon:'💬', label:'Чат',          required:true,  desc:'Основной чат с AI' },
-  { panel:'agent',      icon:'⚡', label:'Агент',         required:true,  desc:'Пошаговый агент для задач' },
-  { panel:'memory',     icon:'🧠', label:'Память',        required:false, desc:'Умная память: EITI Memory, L2/L3, AI-анализ' },
-  { panel:'notes',      icon:'📝', label:'Заметки',       required:false, desc:'Цветные карточки, AI создаёт заметки' },
-  { panel:'eiti-files', icon:'💾', label:'EITI Файлы',    required:false, desc:'Создание и редактирование файлов' },
-  { panel:'projects',   icon:'🧰', label:'Проекты',       required:false, desc:'Персональные проекты с контекстом' },
-  { panel:'history',    icon:'📜', label:'История',       required:false, desc:'Все чаты сгруппированные, поиск' },
-  { panel:'files',      icon:'📁', label:'Файлы',         required:false, desc:'RAG: PDF, DOCX, TXT для контекста AI' },
-  { panel:'diary',      icon:'📓', label:'Дневник',       required:false, desc:'Дневник мыслей и записей' },
-  { panel:'settings',   icon:'⚙', label:'Настройки',     required:true,  desc:'Провайдер, ключ, темы, модули' },
+  { panel:'chat',       icon:'💬', labelKey:'mod_chat',       descKey:'mod_chat_desc',       required:true  },
+  { panel:'agent',      icon:'⚡', labelKey:'mod_agent',      descKey:'mod_agent_desc',      required:true  },
+  { panel:'memory',     icon:'🧠', labelKey:'mod_memory',     descKey:'mod_memory_desc',     required:false },
+  { panel:'notes',      icon:'📝', labelKey:'mod_notes',      descKey:'mod_notes_desc',      required:false },
+  { panel:'eiti-files', icon:'💾', labelKey:'mod_eiti_files', descKey:'mod_eiti_files_desc', required:false },
+  { panel:'projects',   icon:'🧰', labelKey:'mod_projects',   descKey:'mod_projects_desc',   required:false },
+  { panel:'history',    icon:'📜', labelKey:'mod_history',    descKey:'mod_history_desc',    required:false },
+  { panel:'files',      icon:'📁', labelKey:'mod_files',      descKey:'mod_files_desc',      required:false },
+  { panel:'diary',      icon:'📓', labelKey:'mod_diary',      descKey:'mod_diary_desc',      required:false },
+  { panel:'settings',   icon:'⚙', labelKey:'mod_settings',   descKey:'mod_settings_desc',   required:true  },
 ];
 
 function tabVisLoadState() {
@@ -7945,28 +8143,32 @@ function tabVisibilityInit() {
   var container = document.getElementById('tab-toggles-list');
   if (!container) return;
   var state = tabVisLoadState();
+  var t = (typeof LANGS !== 'undefined' ? (LANGS[currentLang] || LANGS.ru) : {});
   var rows = TAB_DEFS.filter(function(d){ return !d.required; }).map(function(def) {
     var visible = state[def.panel] !== false;
     var chk = visible ? 'checked' : '';
+    var lbl = t[def.labelKey] || def.labelKey;
+    var dsc = t[def.descKey] || '';
     return '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid rgba(201,149,42,.08)">'
       + '<div style="flex:1;min-width:0">'
         + '<div style="display:flex;align-items:center;gap:8px">'
           + '<span style="font-size:1.2rem;width:26px;text-align:center">' + def.icon + '</span>'
-          + '<span style="font-size:.9rem;font-weight:700;color:var(--text)">' + def.label + '</span>'
+          + '<span style="font-size:.9rem;font-weight:700;color:var(--text)">' + lbl + '</span>'
         + '</div>'
-        + '<div style="font-size:.75rem;color:var(--text-dim);margin-left:34px;margin-top:2px">' + (def.desc||'') + '</div>'
+        + '<div style="font-size:.75rem;color:var(--text-dim);margin-left:34px;margin-top:2px">' + dsc + '</div>'
       + '</div>'
       + '<label style="cursor:pointer;flex-shrink:0;margin-left:12px">'
-        + '<input type="checkbox" ' + chk + ' style="width:20px;height:20px;accent-color:var(--gold);cursor:pointer" onchange="tabVisToggle(String.fromCharCode(39)+this.dataset.panel+String.fromCharCode(39)===null?this.dataset.panel:this.dataset.panel,this.checked)" data-panel="' + def.panel + '">'
+        + '<input type="checkbox" ' + chk + ' style="width:20px;height:20px;accent-color:var(--gold);cursor:pointer" data-panel="' + def.panel + '">'
       + '</label>'
     + '</div>';
   });
+  var btnShow = t.btn_show_all || '✓ Показать все';
+  var btnHide = t.btn_hide_all || '🧹 Скрыть все';
   container.innerHTML = rows.join('')
     + '<div style="margin-top:12px;display:flex;gap:8px">'
-    + '<button onclick="tabVisShowAll()" style="flex:1;padding:8px;border-radius:10px;border:1px solid var(--gold-dim);background:transparent;color:var(--gold);font-size:.8rem;cursor:pointer">&#10003; Показать все</button>'
-    + '<button onclick="tabVisHideOptional()" style="flex:1;padding:8px;border-radius:10px;border:1px solid var(--gold-dim);background:transparent;color:var(--text-dim);font-size:.8rem;cursor:pointer">&#x1F9F9; Скрыть все</button>'
+    + '<button onclick="tabVisShowAll()" style="flex:1;padding:8px;border-radius:10px;border:1px solid var(--gold-dim);background:transparent;color:var(--gold);font-size:.8rem;cursor:pointer">' + btnShow + '</button>'
+    + '<button onclick="tabVisHideOptional()" style="flex:1;padding:8px;border-radius:10px;border:1px solid var(--gold-dim);background:transparent;color:var(--text-dim);font-size:.8rem;cursor:pointer">' + btnHide + '</button>'
     + '</div>';
-  // Fix onchange handlers after render (data-panel approach)
   container.querySelectorAll('input[data-panel]').forEach(function(inp) {
     inp.addEventListener('change', function() { tabVisToggle(this.dataset.panel, this.checked); });
   });
@@ -7978,7 +8180,8 @@ function tabVisShowAll() {
   TAB_DEFS.forEach(function(d){ state[d.panel] = true; });
   localStorage.setItem(TAB_VIS_KEY, JSON.stringify(state));
   tabVisibilityInit();
-  showToast('Все модули включены');
+  var t = LANGS[currentLang] || LANGS.ru;
+  showToast(t.toast_all_modules_on || 'Все модули включены');
 }
 
 function tabVisHideOptional() {
@@ -7987,7 +8190,8 @@ function tabVisHideOptional() {
   localStorage.setItem(TAB_VIS_KEY, JSON.stringify(state));
   tabVisibilityInit();
   switchPanel('chat');
-  showToast('Необязательные модули скрыты');
+  var t = LANGS[currentLang] || LANGS.ru;
+  showToast(t.toast_optional_hidden || 'Необязательные модули скрыты');
 }
 
 window.tabVisibilityInit = tabVisibilityInit;
