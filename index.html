@@ -687,7 +687,7 @@ main {
 }
 
 /* v1.7.4: File chips inline под полем ввода */
-#wiz-file-chips {
+#wiz-file-chips, #agent-file-chips {
   display: flex; flex-wrap: wrap; gap: 5px;
   padding: 4px 8px 2px;
   min-height: 0;
@@ -1439,7 +1439,10 @@ main {
         <input type="file" id="agentFileInput" multiple style="display:none">
         <div class="files-list" id="agentFilesList"></div>
       </div>
-      
+
+      <!-- v1.7.8: inline file/paste chips для агента -->
+      <div id="agent-file-chips"></div>
+
       <div class="input-bar">
         <div class="input-buttons" id="agentInputBtns">
           <button class="attach-btn small" id="agentAttachBtn" title="Прикрепить файл">📎</button>
@@ -1563,13 +1566,34 @@ main {
 
     <!-- EITI File editor -->
     <div id="eitiFileEditor" style="display:none;position:fixed;inset:0;z-index:9999;background:var(--purple-deep);flex-direction:column">
-      <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--gold-dim)">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--gold-dim);gap:8px;flex-wrap:wrap">
         <button onclick="eitiFileEditorClose()" style="background:none;border:none;color:var(--text);font-size:1.5rem;cursor:pointer;padding:0 8px">✕</button>
-        <input id="eitiFileEditorName" placeholder="имя-файла.txt" style="flex:1;padding:6px 10px;border-radius:8px;border:1px solid var(--gold-dim);background:var(--input-bg);color:var(--text);font-size:.9rem;margin:0 10px">
+        <input id="eitiFileEditorName" placeholder="имя-файла.txt" style="flex:1;min-width:140px;padding:6px 10px;border-radius:8px;border:1px solid var(--gold-dim);background:var(--input-bg);color:var(--text);font-size:.9rem">
         <button onclick="eitiFileEditorSave()" style="padding:7px 18px;border-radius:10px;border:none;background:var(--gold);color:#000;font-weight:700;font-size:.88rem;cursor:pointer">💾 Сохранить</button>
       </div>
+      <!-- v1.7.8: Переключатель режима + макета таблицы -->
+      <div style="display:flex;gap:6px;padding:8px 16px;border-bottom:1px solid var(--gold-dim);flex-wrap:wrap;align-items:center">
+        <div style="display:flex;gap:0;border:1px solid var(--gold-dim);border-radius:8px;overflow:hidden">
+          <button id="eitiModeBtnText" onclick="eitiFileSwitchMode('text')" style="padding:6px 12px;border:none;background:var(--gold);color:#000;font-size:.78rem;font-weight:700;cursor:pointer">📝 Текст</button>
+          <button id="eitiModeBtnTable" onclick="eitiFileSwitchMode('table')" style="padding:6px 12px;border:none;background:transparent;color:var(--text);font-size:.78rem;font-weight:700;cursor:pointer">📊 Таблица</button>
+        </div>
+        <div id="eitiTableControls" style="display:none;gap:6px;align-items:center;flex-wrap:wrap">
+          <label style="font-size:.75rem;color:var(--text-dim)">Макет:</label>
+          <select id="eitiFileLayout" onchange="eitiFileChangeLayout(this.value)" style="padding:5px 8px;border-radius:7px;border:1px solid var(--gold-dim);background:var(--input-bg);color:var(--text);font-size:.78rem">
+            <option value="grid">⊞ Клетки</option>
+            <option value="vertical">↕ Вертикально</option>
+            <option value="horizontal">↔ Горизонтально</option>
+          </select>
+          <button onclick="eitiTableAddRow()" style="padding:5px 9px;border-radius:7px;border:1px solid var(--gold-dim);background:transparent;color:var(--gold);font-size:.75rem;cursor:pointer">+ строка</button>
+          <button onclick="eitiTableAddCol()" style="padding:5px 9px;border-radius:7px;border:1px solid var(--gold-dim);background:transparent;color:var(--gold);font-size:.75rem;cursor:pointer">+ столбец</button>
+          <button onclick="eitiTableDelRow()" style="padding:5px 9px;border-radius:7px;border:1px solid rgba(255,80,80,.3);background:transparent;color:#ff6b6b;font-size:.75rem;cursor:pointer">− строка</button>
+          <button onclick="eitiTableDelCol()" style="padding:5px 9px;border-radius:7px;border:1px solid rgba(255,80,80,.3);background:transparent;color:#ff6b6b;font-size:.75rem;cursor:pointer">− столбец</button>
+        </div>
+      </div>
       <textarea id="eitiFileEditorBody" placeholder="Содержимое файла…" style="flex:1;padding:14px 16px;border:none;background:transparent;color:var(--text);font-size:.9rem;line-height:1.7;resize:none;outline:none;font-family:'Crimson Pro',monospace;overflow-y:auto"></textarea>
+      <div id="eitiFileTableEditor" style="display:none;flex:1;overflow:auto;padding:14px 16px"></div>
       <input type="hidden" id="eitiFileEditorOldName">
+      <input type="hidden" id="eitiFileEditorMode" value="text">
     </div>
 
     <!-- ── Projects panel ─────────────────────────────────── -->
@@ -3845,6 +3869,7 @@ document.getElementById('agentFileInput').addEventListener('change', async (e) =
   }
 
   if (loaded) renderFilesList('agent');
+  if (loaded) wizRenderFileChips(); // v1.7.8: показать чипы в агент-режиме
   if (loaded) showToast(`📎 Загружено ${loaded} файл(ов)`);
   e.target.value = '';
 });
@@ -3965,25 +3990,40 @@ async function readFileAsText(file) {
 }
 
 // v1.7.4: Рендер inline chip'ов (файлы + paste)
+// v1.7.8: рендерится и в чате, и в агенте
 function wizRenderFileChips() {
-  const el = document.getElementById('wiz-file-chips');
-  if (!el) return;
-  let html = '';
-  chatFiles.forEach((f, i) => {
-    const kb = Math.round(f.size / 1024);
-    html += `<span class="wiz-file-chip">📎 <span class="wfc-name" title="${f.name}">${f.name} · ${kb} KB</span><button class="wfc-x" onclick="wizRemoveFileChip(${i})">×</button></span>`;
-  });
-  (window._wizPasteChips || []).forEach((p, i) => {
-    const preview = p.text.slice(0, 30).replace(/\n/g, ' ');
-    html += `<span class="wiz-paste-chip">📋 <span class="wfc-name" title="${preview}…">${preview}…</span><button class="wfc-x" onclick="wizRemovePasteChip(${i})">×</button></span>`;
-  });
-  el.innerHTML = html;
+  // Чат
+  const chatEl = document.getElementById('wiz-file-chips');
+  if (chatEl) {
+    let html = '';
+    chatFiles.forEach((f, i) => {
+      const kb = Math.round(f.size / 1024);
+      html += `<span class="wiz-file-chip">📎 <span class="wfc-name" title="${f.name}">${f.name} · ${kb} KB</span><button class="wfc-x" onclick="wizRemoveFileChip(${i}, 'chat')">×</button></span>`;
+    });
+    (window._wizPasteChips || []).forEach((p, i) => {
+      const preview = p.text.slice(0, 30).replace(/\n/g, ' ');
+      html += `<span class="wiz-paste-chip">📋 <span class="wfc-name" title="${preview}…">${preview}…</span><button class="wfc-x" onclick="wizRemovePasteChip(${i})">×</button></span>`;
+    });
+    chatEl.innerHTML = html;
+  }
+  // Агент
+  const agentEl = document.getElementById('agent-file-chips');
+  if (agentEl) {
+    let html = '';
+    agentFiles.forEach((f, i) => {
+      const kb = Math.round((f.size || (f.content||'').length) / 1024);
+      html += `<span class="wiz-file-chip">📎 <span class="wfc-name" title="${f.name}">${f.name} · ${kb} KB</span><button class="wfc-x" onclick="wizRemoveFileChip(${i}, 'agent')">×</button></span>`;
+    });
+    agentEl.innerHTML = html;
+  }
 }
-window.wizRemoveFileChip = function(idx) {
-  const file = chatFiles[idx];
-  chatFiles.splice(idx, 1);
+window.wizRemoveFileChip = function(idx, panel) {
+  panel = panel || 'chat';
+  const arr = panel === 'agent' ? agentFiles : chatFiles;
+  const file = arr[idx];
+  arr.splice(idx, 1);
   if (file) deleteChunksByFileName(file.name);
-  renderFilesList('chat');
+  renderFilesList(panel);
   wizRenderFileChips();
 };
 window.wizRemovePasteChip = function(idx) {
@@ -4024,8 +4064,8 @@ function removeFile(panel, fileId) {
 
 // Получение контекста файлов для API запроса (с использованием чанков)
 async function getFilesContext(panel, userQuery) {
-  // v1.7.5 FIX: используем снимок файлов на момент отправки (chatFiles уже очищен)
-  const files = (panel === 'chat' && window._wizFilesSentSnapshot && window._wizFilesSentSnapshot.length)
+  // v1.7.5/v1.7.8 FIX: используем снимок файлов на момент отправки (массив уже очищен после отправки)
+  const files = (window._wizFilesSentSnapshot && window._wizFilesSentSnapshot.length)
     ? window._wizFilesSentSnapshot
     : (panel === 'chat' ? chatFiles : agentFiles);
   window._wizFilesSentSnapshot = null;
@@ -4110,15 +4150,19 @@ async function sendMessage(inputEl, historyEl) {
   if (!text) return;
   inputEl.value = ''; inputEl.style.height = 'auto';
 
-  // v1.7.5: снимок прикреплённых файлов на момент отправки (для bubble)
-  const _filesAtSend = activePanel === 'chat' ? chatFiles.slice() : [];
+  // v1.7.5/v1.7.8: снимок прикреплённых файлов на момент отправки (для bubble)
+  const _filesAtSend = activePanel === 'chat' ? chatFiles.slice() : agentFiles.slice();
   appendMsg(text, 'user', historyEl, _filesAtSend);
   // v1.7.5 FIX: сохраняем снимок файлов ДО очистки — он уйдёт в getFilesContext
-  window._wizFilesSentSnapshot = activePanel === 'chat' ? chatFiles.slice() : [];
+  window._wizFilesSentSnapshot = activePanel === 'chat' ? chatFiles.slice() : agentFiles.slice();
   // очищаем чипы после отправки
   if (activePanel === 'chat' && chatFiles.length) {
     chatFiles = [];
     renderFilesList('chat');
+    wizRenderFileChips();
+  } else if (activePanel === 'agent' && agentFiles.length) {
+    agentFiles = [];
+    renderFilesList('agent');
     wizRenderFileChips();
   }
   
@@ -4148,12 +4192,19 @@ Frontend: HTML/CSS/JS, один файл index.html без фреймворко�
 AI провайдеры: Ollama (офлайн, localhost:11434), Claude, OpenAI, DeepSeek, Groq, OpenRouter, Gemini, Grok.
 
 КОМАНДЫ для тебя (вставляй в свой ответ — они обрабатываются автоматически и не показываются пользователю):
-• [MEM_ADD:тег|текст] — сохрани важный факт о пользователе в EITI Memory. Теги: general/project/interest/value/skill/preference. Используй когда пользователь говорит "запомни", "сохрани", или сам сообщает важную инфу о себе.
+• [MEM_ADD:тег|текст] — сохрани важный факт о пользователе в EITI Memory. Теги: general/project/interest/value/skill/preference.
 • [MEM_DEL:тег|часть_текста] — удали запись из EITI Memory.
-• [TASK_ADD:статус|название|описание|дата|приоритет|теги] — добавь задачу в Доску.
-• [NOTE_WRITE:Заголовок|Текст] — создай заметку пользователю.
-• <EITI_FILE:имя.txt>содержимое</EITI_FILE> — создай файл. статус: To Do / In Progress / Done / Blocked. приоритет: low/medium/high. дата: YYYY-MM-DD или пусто.
+• [TASK_ADD:статус|название|описание|дата|приоритет|теги] — добавь задачу в Доску. статус: To Do / In Progress / Done / Blocked. приоритет: low/medium/high. дата: YYYY-MM-DD или пусто.
 • [TASK_DEL:id] — удали задачу.
+• [NOTE_WRITE:Заголовок|Текст] — создаёт заметку ИЛИ обновляет существующую с таким же заголовком (upsert).
+• [NOTE_UPDATE:Заголовок|НовыйТекст] — явно перезаписать тело существующей заметки.
+• [NOTE_APPEND:Заголовок|Дополнение] — дописать текст в конец существующей заметки.
+• <EITI_FILE:имя.txt>содержимое</EITI_FILE> — создаёт ЕITI-файл ИЛИ перезаписывает существующий с таким же именем (upsert). Это обычный текстовый файл.
+• <EITI_UPDATE:имя.txt>новое содержимое</EITI_UPDATE> — явно перезаписать содержимое существующего ЕITI-файла.
+• <EITI_APPEND:имя.txt>что добавить</EITI_APPEND> — дописать в конец существующего ЕITI-файла.
+ЕITI-файлы могут быть в двух режимах: текст и таблица (клетки). У таблицы есть макет: vertical (↕ одна колонка), horizontal (↔ одна строка), grid (⊞ клетки M×N). Пользователь сам выбирает режим в редакторе — ты создавай как текст, а пользователь при необходимости конвертирует.
+
+ВАЖНО: чтобы обновить существующую заметку или ЕITI-файл — НЕ создавай новый, используй точно такой же заголовок/имя в NOTE_WRITE / EITI_FILE, либо явно NOTE_UPDATE / EITI_UPDATE / NOTE_APPEND / EITI_APPEND.
 
 ВАЖНО: эти команды не появляются в твоём видимом тексте. Просто вставь их в ответ — система сама обработает и удалит из вывода. Используй активно когда уместно.`;
 
@@ -8363,16 +8414,74 @@ function notesEditorSave() {
   notesEditorClose();
 }
 
-// Parse [NOTE_WRITE:title|body] from AI replies
+// Parse [NOTE_WRITE:title|body], [NOTE_UPDATE:title|body], [NOTE_APPEND:title|extra] from AI replies
+// v1.7.8: NOTE_WRITE теперь делает upsert по заголовку (создаёт если нет, обновляет если есть)
 function notesParseAICommands(text) {
   if (!text) return text;
-  text.replace(/\[NOTE_WRITE:([^\|]+)\|([^\]]+)\]/g, (_, title, body) => {
+  let changed = false;
+
+  // [NOTE_UPDATE:title|body] — заменяет тело существующей заметки
+  text.replace(/\[NOTE_UPDATE:([^\|]+)\|([\s\S]*?)\]/g, (_, title, body) => {
     const notes = notesLoad();
-    notes.push({ id:'note_'+Date.now(), title: title.trim(), body: body.trim(), colorIdx:0, emojiIdx:0, created:Date.now(), updated:Date.now() });
-    notesSave(notes);
-    showToast('📝 Заметка создана: ' + title.trim().slice(0,30));
+    const idx = notes.findIndex(n => (n.title||'').trim().toLowerCase() === title.trim().toLowerCase());
+    if (idx >= 0) {
+      notes[idx].body = body.trim();
+      notes[idx].updated = Date.now();
+      notesSave(notes);
+      showToast('✏️ Заметка обновлена: ' + title.trim().slice(0,30));
+      changed = true;
+    } else {
+      notes.push({ id:'note_'+Date.now(), title: title.trim(), body: body.trim(), colorIdx:0, emojiIdx:0, created:Date.now(), updated:Date.now() });
+      notesSave(notes);
+      showToast('📝 Заметка создана: ' + title.trim().slice(0,30));
+      changed = true;
+    }
   });
-  return text.replace(/\[NOTE_WRITE:[^\]]+\]/g, '').trim();
+
+  // [NOTE_APPEND:title|extra] — добавляет к телу существующей
+  text.replace(/\[NOTE_APPEND:([^\|]+)\|([\s\S]*?)\]/g, (_, title, extra) => {
+    const notes = notesLoad();
+    const idx = notes.findIndex(n => (n.title||'').trim().toLowerCase() === title.trim().toLowerCase());
+    if (idx >= 0) {
+      notes[idx].body = ((notes[idx].body||'') + '\n\n' + extra.trim()).trim();
+      notes[idx].updated = Date.now();
+      notesSave(notes);
+      showToast('➕ Дописано в заметку: ' + title.trim().slice(0,30));
+      changed = true;
+    } else {
+      notes.push({ id:'note_'+Date.now(), title: title.trim(), body: extra.trim(), colorIdx:0, emojiIdx:0, created:Date.now(), updated:Date.now() });
+      notesSave(notes);
+      showToast('📝 Заметка создана: ' + title.trim().slice(0,30));
+      changed = true;
+    }
+  });
+
+  // [NOTE_WRITE:title|body] — upsert по заголовку
+  text.replace(/\[NOTE_WRITE:([^\|]+)\|([\s\S]*?)\]/g, (_, title, body) => {
+    const notes = notesLoad();
+    const idx = notes.findIndex(n => (n.title||'').trim().toLowerCase() === title.trim().toLowerCase());
+    if (idx >= 0) {
+      notes[idx].body = body.trim();
+      notes[idx].updated = Date.now();
+      notesSave(notes);
+      showToast('✏️ Заметка обновлена: ' + title.trim().slice(0,30));
+    } else {
+      notes.push({ id:'note_'+Date.now(), title: title.trim(), body: body.trim(), colorIdx:0, emojiIdx:0, created:Date.now(), updated:Date.now() });
+      notesSave(notes);
+      showToast('📝 Заметка создана: ' + title.trim().slice(0,30));
+    }
+    changed = true;
+  });
+
+  if (changed && document.getElementById('notesList')) {
+    notesRender(document.getElementById('notesSearch')?.value||'');
+  }
+
+  let out = text;
+  out = out.replace(/\[NOTE_UPDATE:[^\|]+\|[\s\S]*?\]/g, '');
+  out = out.replace(/\[NOTE_APPEND:[^\|]+\|[\s\S]*?\]/g, '');
+  out = out.replace(/\[NOTE_WRITE:[^\|]+\|[\s\S]*?\]/g, '');
+  return out.trim();
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -8399,29 +8508,70 @@ function eitiFilesRender(filter) {
     return;
   }
   list.innerHTML = files.map(f => {
-    const size = (f.content||'').length;
+    const isTable = f.type === 'table' && Array.isArray(f.cells);
+    const size = isTable
+      ? (f.cells.length || 0) + '×' + ((f.cells[0]||[]).length || 0) + ' клеток'
+      : ((f.content||'').length + ' симв.');
     const date = new Date(f.updated||0).toLocaleString('ru', {day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
     const ext = (f.name||'').split('.').pop()?.toLowerCase();
-    const icon = {txt:'📄',md:'📝',json:'📦',html:'🌐',csv:'📊',xml:'🗂️',js:'📜',py:'🐍',css:'🎨'}[ext] || '📄';
-    return `<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--card-bg);border:1px solid var(--gold-dim);border-radius:12px">
-      <span style="font-size:1.5rem">${icon}</span>
-      <div style="flex:1;min-width:0">
-        <div style="font-size:.88rem;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(f.name||'untitled')}</div>
-        <div style="font-size:.72rem;color:var(--text-dim)">${size} симв. · ${date}</div>
+    const icon = isTable ? '📊'
+      : ({txt:'📄',md:'📝',json:'📦',html:'🌐',csv:'📊',xml:'🗂️',js:'📜',py:'🐍',css:'🎨'}[ext] || '📄');
+
+    // v1.7.8: превью содержимого прямо в карточке
+    let previewHTML = '';
+    if (isTable) {
+      const layout = f.layout || 'grid';
+      const cells = f.cells || [];
+      const maxR = Math.min(cells.length, 4);
+      const maxC = Math.min((cells[0]||[]).length, 5);
+      let tbl = '<table style="border-collapse:collapse;font-size:.7rem;width:100%;table-layout:fixed">';
+      for (let r=0; r<maxR; r++) {
+        tbl += '<tr>';
+        for (let c=0; c<maxC; c++) {
+          const v = (cells[r]||[])[c] || '';
+          tbl += `<td style="border:1px solid var(--gold-dim);padding:3px 5px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:80px">${escapeHtml(String(v).slice(0,30))}</td>`;
+        }
+        tbl += '</tr>';
+      }
+      tbl += '</table>';
+      const more = (cells.length > maxR || (cells[0]||[]).length > maxC) ? `<div style="font-size:.65rem;opacity:.55;margin-top:3px">… ещё (макет: ${layout})</div>` : '';
+      previewHTML = `<div style="margin-top:8px;padding:6px;background:rgba(0,0,0,0.15);border-radius:8px">${tbl}${more}</div>`;
+    } else {
+      const txt = (f.content||'').trim();
+      if (txt) {
+        const cut = txt.slice(0, 220);
+        previewHTML = `<div style="margin-top:6px;padding:8px 10px;background:rgba(0,0,0,0.18);border-radius:8px;font-size:.78rem;color:var(--text-dim);line-height:1.5;white-space:pre-wrap;max-height:90px;overflow:hidden;font-family:'Crimson Pro',monospace">${escapeHtml(cut)}${txt.length>cut.length?'…':''}</div>`;
+      }
+    }
+
+    return `<div style="display:flex;flex-direction:column;gap:0;padding:10px 12px;background:var(--card-bg);border:1px solid var(--gold-dim);border-radius:12px">
+      <div style="display:flex;align-items:center;gap:10px;cursor:pointer" onclick="eitiFileEdit('${escapeHtml(f.name)}')">
+        <span style="font-size:1.5rem">${icon}</span>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:.88rem;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(f.name||'untitled')}</div>
+          <div style="font-size:.72rem;color:var(--text-dim)">${size} · ${date}</div>
+        </div>
+        <div style="display:flex;gap:5px" onclick="event.stopPropagation()">
+          <button onclick="eitiFileEdit('${escapeHtml(f.name)}')" style="padding:5px 10px;border-radius:7px;border:1px solid var(--gold-dim);background:transparent;color:var(--gold);font-size:.78rem;cursor:pointer">✏️</button>
+          <button onclick="eitiFileDownload('${escapeHtml(f.name)}')" style="padding:5px 10px;border-radius:7px;border:1px solid var(--gold-dim);background:transparent;color:var(--text-dim);font-size:.78rem;cursor:pointer">⬇</button>
+          <button onclick="eitiFileDelete('${escapeHtml(f.name)}')" style="padding:5px 10px;border-radius:7px;border:1px solid rgba(255,80,80,.3);background:transparent;color:#ff6b6b;font-size:.78rem;cursor:pointer">✕</button>
+        </div>
       </div>
-      <div style="display:flex;gap:5px">
-        <button onclick="eitiFileEdit('${escapeHtml(f.name)}')" style="padding:5px 10px;border-radius:7px;border:1px solid var(--gold-dim);background:transparent;color:var(--gold);font-size:.78rem;cursor:pointer">✏️</button>
-        <button onclick="eitiFileDownload('${escapeHtml(f.name)}')" style="padding:5px 10px;border-radius:7px;border:1px solid var(--gold-dim);background:transparent;color:var(--text-dim);font-size:.78rem;cursor:pointer">⬇</button>
-        <button onclick="eitiFileDelete('${escapeHtml(f.name)}')" style="padding:5px 10px;border-radius:7px;border:1px solid rgba(255,80,80,.3);background:transparent;color:#ff6b6b;font-size:.78rem;cursor:pointer">✕</button>
-      </div>
+      ${previewHTML}
     </div>`;
   }).join('');
 }
+
+// v1.7.8: рабочее состояние редактора таблиц
+window._eitiTableState = { layout: 'grid', cells: [['']] };
 
 function eitiFileNew() {
   document.getElementById('eitiFileEditorOldName').value = '';
   document.getElementById('eitiFileEditorName').value = '';
   document.getElementById('eitiFileEditorBody').value = '';
+  document.getElementById('eitiFileEditorMode').value = 'text';
+  window._eitiTableState = { layout: 'grid', cells: [['','',''],['','',''],['','','']] };
+  eitiFileSwitchMode('text', true);
   document.getElementById('eitiFileEditor').style.display = 'flex';
   document.getElementById('eitiFileEditorName').focus();
 }
@@ -8431,19 +8581,165 @@ function eitiFileEdit(name) {
   if (!f) return;
   document.getElementById('eitiFileEditorOldName').value = name;
   document.getElementById('eitiFileEditorName').value = name;
-  document.getElementById('eitiFileEditorBody').value = f.content||'';
+  if (f.type === 'table' && Array.isArray(f.cells)) {
+    window._eitiTableState = { layout: f.layout || 'grid', cells: f.cells.map(r => r.slice()) };
+    document.getElementById('eitiFileEditorMode').value = 'table';
+    document.getElementById('eitiFileEditorBody').value = '';
+    eitiFileSwitchMode('table', true);
+  } else {
+    document.getElementById('eitiFileEditorBody').value = f.content||'';
+    window._eitiTableState = { layout: 'grid', cells: [['','',''],['','',''],['','','']] };
+    document.getElementById('eitiFileEditorMode').value = 'text';
+    eitiFileSwitchMode('text', true);
+  }
   document.getElementById('eitiFileEditor').style.display = 'flex';
 }
 function eitiFileEditorClose() {
   document.getElementById('eitiFileEditor').style.display = 'none';
   eitiFilesRender(document.getElementById('eitiFilesSearch')?.value||'');
 }
+
+// v1.7.8: переключение между режимами текст/таблица
+function eitiFileSwitchMode(mode, silent) {
+  document.getElementById('eitiFileEditorMode').value = mode;
+  const textBody = document.getElementById('eitiFileEditorBody');
+  const tableBody = document.getElementById('eitiFileTableEditor');
+  const tableCtrls = document.getElementById('eitiTableControls');
+  const btnText = document.getElementById('eitiModeBtnText');
+  const btnTable = document.getElementById('eitiModeBtnTable');
+  if (mode === 'table') {
+    textBody.style.display = 'none';
+    tableBody.style.display = 'block';
+    tableCtrls.style.display = 'flex';
+    btnText.style.background = 'transparent'; btnText.style.color = 'var(--text)';
+    btnTable.style.background = 'var(--gold)'; btnTable.style.color = '#000';
+    if (!window._eitiTableState.cells || !window._eitiTableState.cells.length) {
+      window._eitiTableState = { layout: 'grid', cells: [['','',''],['','',''],['','','']] };
+    }
+    document.getElementById('eitiFileLayout').value = window._eitiTableState.layout || 'grid';
+    eitiRenderTableEditor();
+  } else {
+    textBody.style.display = '';
+    tableBody.style.display = 'none';
+    tableCtrls.style.display = 'none';
+    btnText.style.background = 'var(--gold)'; btnText.style.color = '#000';
+    btnTable.style.background = 'transparent'; btnTable.style.color = 'var(--text)';
+  }
+}
+
+function eitiFileChangeLayout(layout) {
+  window._eitiTableState.layout = layout;
+  // нормализуем размер при смене макета
+  if (layout === 'horizontal') {
+    // одна строка
+    const cells = window._eitiTableState.cells;
+    const flat = cells.flat();
+    window._eitiTableState.cells = [flat.length ? flat : ['']];
+  } else if (layout === 'vertical') {
+    // один столбец
+    const flat = window._eitiTableState.cells.flat();
+    window._eitiTableState.cells = (flat.length ? flat : ['']).map(v => [v]);
+  } else if (layout === 'grid') {
+    // если был 1×N или N×1 — оставляем; иначе ничего не делаем
+    if (!window._eitiTableState.cells.length) window._eitiTableState.cells = [['']];
+  }
+  eitiRenderTableEditor();
+}
+
+function eitiRenderTableEditor() {
+  const container = document.getElementById('eitiFileTableEditor');
+  if (!container) return;
+  const s = window._eitiTableState;
+  const cells = s.cells || [];
+  let html = '<table style="border-collapse:collapse;width:100%;table-layout:fixed">';
+  for (let r=0; r<cells.length; r++) {
+    html += '<tr>';
+    for (let c=0; c<(cells[r]||[]).length; c++) {
+      const v = cells[r][c] || '';
+      html += `<td style="border:1px solid var(--gold-dim);padding:0;background:var(--input-bg)">
+        <textarea data-r="${r}" data-c="${c}" oninput="eitiTableCellInput(this)" style="width:100%;min-height:34px;padding:6px 8px;background:transparent;border:none;color:var(--text);font-size:.85rem;line-height:1.4;resize:vertical;outline:none;font-family:inherit;box-sizing:border-box">${escapeHtml(String(v))}</textarea>
+      </td>`;
+    }
+    html += '</tr>';
+  }
+  html += '</table>';
+  container.innerHTML = html;
+}
+
+function eitiTableCellInput(el) {
+  const r = +el.dataset.r;
+  const c = +el.dataset.c;
+  if (!window._eitiTableState.cells[r]) window._eitiTableState.cells[r] = [];
+  window._eitiTableState.cells[r][c] = el.value;
+}
+
+function eitiTableAddRow() {
+  const cells = window._eitiTableState.cells;
+  const cols = (cells[0]||[]).length || 1;
+  if (window._eitiTableState.layout === 'horizontal') {
+    // в горизонтальном макете «строка» = новая ячейка справа
+    cells[0] = cells[0] || [];
+    cells[0].push('');
+  } else {
+    cells.push(new Array(cols).fill(''));
+  }
+  eitiRenderTableEditor();
+}
+function eitiTableAddCol() {
+  const cells = window._eitiTableState.cells;
+  if (window._eitiTableState.layout === 'vertical') {
+    // в вертикальном «столбец» = новая ячейка снизу
+    cells.push(['']);
+  } else {
+    for (let r=0; r<cells.length; r++) {
+      cells[r] = cells[r] || [];
+      cells[r].push('');
+    }
+    if (!cells.length) cells.push(['']);
+  }
+  eitiRenderTableEditor();
+}
+function eitiTableDelRow() {
+  const cells = window._eitiTableState.cells;
+  if (window._eitiTableState.layout === 'horizontal') {
+    if ((cells[0]||[]).length > 1) cells[0].pop();
+  } else if (cells.length > 1) {
+    cells.pop();
+  }
+  eitiRenderTableEditor();
+}
+function eitiTableDelCol() {
+  const cells = window._eitiTableState.cells;
+  if (window._eitiTableState.layout === 'vertical') {
+    if (cells.length > 1) cells.pop();
+  } else {
+    for (let r=0; r<cells.length; r++) {
+      if ((cells[r]||[]).length > 1) cells[r].pop();
+    }
+  }
+  eitiRenderTableEditor();
+}
+
 function eitiFileEditorSave() {
   const oldName = document.getElementById('eitiFileEditorOldName').value;
   const name = document.getElementById('eitiFileEditorName').value.trim() || 'untitled.txt';
-  const content = document.getElementById('eitiFileEditorBody').value;
+  const mode = document.getElementById('eitiFileEditorMode').value;
   const files = eitiFilesLoad().filter(f => f.name !== oldName && f.name !== name);
-  files.push({ name, content, created: Date.now(), updated: Date.now() });
+  let entry;
+  if (mode === 'table') {
+    const s = window._eitiTableState;
+    entry = {
+      name, type: 'table',
+      layout: s.layout || 'grid',
+      cells: (s.cells || [['']]).map(r => r.map(v => String(v||''))),
+      content: '', // оставляем пустым; для совместимости
+      created: Date.now(), updated: Date.now()
+    };
+  } else {
+    const content = document.getElementById('eitiFileEditorBody').value;
+    entry = { name, type: 'text', content, created: Date.now(), updated: Date.now() };
+  }
+  files.push(entry);
   eitiFilesSave(files);
   showToast('💾 Файл сохранён: ' + name);
   eitiFileEditorClose();
@@ -8460,7 +8756,15 @@ function eitiFileDownload(name) {
   if (!f) return;
   const ext = name.split('.').pop()?.toLowerCase();
   const mime = {json:'application/json',html:'text/html',md:'text/markdown',csv:'text/csv'}[ext] || 'text/plain';
-  const blob = new Blob([f.content||''], {type:mime});
+  // v1.7.8: для табличных файлов формируем CSV
+  let body = f.content || '';
+  if (f.type === 'table' && Array.isArray(f.cells)) {
+    body = f.cells.map(row => row.map(v => {
+      const s = String(v||'');
+      return /[",\n]/.test(s) ? '"' + s.replace(/"/g,'""') + '"' : s;
+    }).join(',')).join('\n');
+  }
+  const blob = new Blob([body], {type: f.type === 'table' ? 'text/csv' : mime});
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a'); a.href=url; a.download=name;
   document.body.appendChild(a); a.click();
@@ -8490,19 +8794,84 @@ function eitiFileImport(input) {
   reader.readAsText(file);
   input.value = '';
 }
-// Parse <EITI_FILE:name.txt>content</EITI_FILE> from AI replies
+// Parse <EITI_FILE>, <EITI_UPDATE>, <EITI_APPEND> from AI replies
+// v1.7.8: EITI_FILE и EITI_UPDATE делают upsert по имени; EITI_APPEND дописывает в конец
 function eitiFilesParseAICommands(text) {
   if (!text) return text;
   let changed = false;
-  text.replace(/<EITI_FILE:([^>]+)>([\s\S]*?)<\/EITI_FILE>/g, (_, name, content) => {
-    const files = eitiFilesLoad().filter(f => f.name !== name.trim());
-    files.push({ name: name.trim(), content: content.trim(), created: Date.now(), updated: Date.now() });
-    eitiFilesSave(files);
-    showToast('💾 AI создал файл: ' + name.trim());
+
+  // EITI_APPEND — дописать в конец существующего файла (создаст, если нет)
+  text.replace(/<EITI_APPEND:([^>]+)>([\s\S]*?)<\/EITI_APPEND>/g, (_, name, extra) => {
+    const all = eitiFilesLoad();
+    const n = name.trim();
+    const idx = all.findIndex(f => f.name === n);
+    if (idx >= 0) {
+      const prev = all[idx];
+      // если файл-таблица — добавим extra как новые строки в text-режиме нет смысла; поэтому конвертим в text
+      if (prev.type === 'table') {
+        prev.content = JSON.stringify(prev.cells||[]) + '\n\n' + extra.trim();
+        prev.type = 'text';
+      } else {
+        prev.content = ((prev.content||'') + '\n\n' + extra.trim()).trim();
+      }
+      prev.updated = Date.now();
+      eitiFilesSave(all);
+      showToast('➕ Дописано в файл: ' + n);
+    } else {
+      all.push({ name: n, content: extra.trim(), type:'text', created: Date.now(), updated: Date.now() });
+      eitiFilesSave(all);
+      showToast('💾 AI создал файл: ' + n);
+    }
     changed = true;
   });
-  if (changed) eitiFilesRender('');
-  return text.replace(/<EITI_FILE:[^>]+>[\s\S]*?<\/EITI_FILE>/g, '').trim();
+
+  // EITI_UPDATE — синоним перезаписи (явная семантика)
+  text.replace(/<EITI_UPDATE:([^>]+)>([\s\S]*?)<\/EITI_UPDATE>/g, (_, name, content) => {
+    const all = eitiFilesLoad();
+    const n = name.trim();
+    const idx = all.findIndex(f => f.name === n);
+    if (idx >= 0) {
+      all[idx].content = content.trim();
+      all[idx].type = 'text';
+      all[idx].updated = Date.now();
+      eitiFilesSave(all);
+      showToast('✏️ Файл обновлён: ' + n);
+    } else {
+      all.push({ name: n, content: content.trim(), type:'text', created: Date.now(), updated: Date.now() });
+      eitiFilesSave(all);
+      showToast('💾 AI создал файл: ' + n);
+    }
+    changed = true;
+  });
+
+  // EITI_FILE — upsert (создать или перезаписать по имени)
+  text.replace(/<EITI_FILE:([^>]+)>([\s\S]*?)<\/EITI_FILE>/g, (_, name, content) => {
+    const all = eitiFilesLoad();
+    const n = name.trim();
+    const idx = all.findIndex(f => f.name === n);
+    if (idx >= 0) {
+      all[idx].content = content.trim();
+      all[idx].type = 'text';
+      all[idx].updated = Date.now();
+      eitiFilesSave(all);
+      showToast('✏️ Файл обновлён: ' + n);
+    } else {
+      all.push({ name: n, content: content.trim(), type:'text', created: Date.now(), updated: Date.now() });
+      eitiFilesSave(all);
+      showToast('💾 AI создал файл: ' + n);
+    }
+    changed = true;
+  });
+
+  if (changed && document.getElementById('eitiFilesList')) {
+    eitiFilesRender(document.getElementById('eitiFilesSearch')?.value||'');
+  }
+
+  let out = text;
+  out = out.replace(/<EITI_APPEND:[^>]+>[\s\S]*?<\/EITI_APPEND>/g, '');
+  out = out.replace(/<EITI_UPDATE:[^>]+>[\s\S]*?<\/EITI_UPDATE>/g, '');
+  out = out.replace(/<EITI_FILE:[^>]+>[\s\S]*?<\/EITI_FILE>/g, '');
+  return out.trim();
 }
 
 </script>
