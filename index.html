@@ -1420,6 +1420,7 @@ main {
           </select>
         </div>
         <div class="chat-header-right">
+          <button id="stopAgentBtn" class="btn-small" title="Остановить агента" onclick="stopAgentLoop()">⏹</button>
           <button id="clearAgentBtn" class="btn-small" title="Очистить агента">🗑</button>
         </div>
       </div>
@@ -1973,6 +1974,16 @@ main {
             </div>
             <label class="toggle">
               <input type="checkbox" id="cfgStream" checked>
+              <div class="toggle-track"></div>
+            </label>
+          </div>
+          <div class="toggle-row">
+            <div>
+              <div class="toggle-label">🤖 Tool-Use для Агента</div>
+              <div class="toggle-sub">Нативные function calls (DeepSeek / Gemini): чтение и запись заметок, файлов, памяти, задач в цикле до 10 шагов</div>
+            </div>
+            <label class="toggle">
+              <input type="checkbox" id="cfgAgentToolUse" checked onchange="localStorage.setItem('wiz_agent_tooluse', this.checked ? '1' : '0')">
               <div class="toggle-track"></div>
             </label>
           </div>
@@ -4144,6 +4155,420 @@ function formatFileSize(bytes) {
   return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// 🤖 NATIVE TOOL-USE для Агент-режима (v1.7.8)
+// Поддерживается для DeepSeek (OpenAI-совместимо) и Gemini (functionDeclarations)
+// ═══════════════════════════════════════════════════════════════════════════
+const AGENT_TOOLS_SPEC = [
+  { name:'note_write', description:'Создать заметку ИЛИ перезаписать существующую с таким же заголовком (upsert).',
+    parameters:{ type:'object', properties:{
+      title:{type:'string', description:'Заголовок заметки'},
+      body:{type:'string', description:'Содержимое заметки'}
+    }, required:['title','body']}},
+  { name:'note_append', description:'Дописать текст в конец существующей заметки (или создать новую если нет).',
+    parameters:{ type:'object', properties:{
+      title:{type:'string'}, extra:{type:'string'}
+    }, required:['title','extra']}},
+  { name:'notes_list', description:'Получить список всех заметок (заголовки и размер).',
+    parameters:{ type:'object', properties:{}}},
+  { name:'note_read', description:'Прочитать содержимое заметки по заголовку.',
+    parameters:{ type:'object', properties:{ title:{type:'string'}}, required:['title']}},
+  { name:'note_delete', description:'Удалить заметку по заголовку.',
+    parameters:{ type:'object', properties:{ title:{type:'string'}}, required:['title']}},
+
+  { name:'eiti_file_write', description:'Создать или перезаписать EITI-файл по имени.',
+    parameters:{ type:'object', properties:{
+      name:{type:'string', description:'имя файла, например notes.txt'},
+      content:{type:'string'}
+    }, required:['name','content']}},
+  { name:'eiti_file_append', description:'Дописать в конец EITI-файла.',
+    parameters:{ type:'object', properties:{ name:{type:'string'}, extra:{type:'string'}}, required:['name','extra']}},
+  { name:'eiti_files_list', description:'Список всех EITI-файлов.',
+    parameters:{ type:'object', properties:{}}},
+  { name:'eiti_file_read', description:'Прочитать содержимое EITI-файла. Для таблиц вернёт JSON {layout, cells}.',
+    parameters:{ type:'object', properties:{ name:{type:'string'}}, required:['name']}},
+  { name:'eiti_file_delete', description:'Удалить EITI-файл по имени.',
+    parameters:{ type:'object', properties:{ name:{type:'string'}}, required:['name']}},
+
+  { name:'mem_add', description:'Сохранить факт в EITI Memory. tag: general|project|interest|value|skill|preference',
+    parameters:{ type:'object', properties:{
+      tag:{type:'string'}, text:{type:'string'}
+    }, required:['tag','text']}},
+  { name:'mem_list', description:'Список фактов в памяти, опционально с фильтром по тегу.',
+    parameters:{ type:'object', properties:{ tag:{type:'string'}}}},
+  { name:'mem_delete', description:'Удалить факт из памяти по части текста (и опционально по тегу).',
+    parameters:{ type:'object', properties:{ tag:{type:'string'}, query:{type:'string'}}, required:['query']}},
+
+  { name:'task_add', description:'Добавить задачу в Доску. status: To Do|In Progress|Done|Blocked, priority: low|medium|high',
+    parameters:{ type:'object', properties:{
+      title:{type:'string'}, description:{type:'string'},
+      status:{type:'string'}, priority:{type:'string'},
+      date:{type:'string', description:'YYYY-MM-DD или пусто'},
+      tags:{type:'string', description:'теги через запятую'}
+    }, required:['title']}},
+  { name:'task_list', description:'Список задач на Доске.',
+    parameters:{ type:'object', properties:{ status:{type:'string'}}}},
+  { name:'task_done', description:'Перевести задачу в статус Done по id или заголовку.',
+    parameters:{ type:'object', properties:{ id:{type:'string'}, title:{type:'string'}}}},
+  { name:'task_delete', description:'Удалить задачу по id или заголовку.',
+    parameters:{ type:'object', properties:{ id:{type:'string'}, title:{type:'string'}}}},
+];
+
+function _agentToolsToOpenAI() {
+  return AGENT_TOOLS_SPEC.map(t => ({
+    type: 'function',
+    function: { name: t.name, description: t.description, parameters: t.parameters || { type:'object', properties:{}} }
+  }));
+}
+function _agentToolsToGemini() {
+  return [{ functionDeclarations: AGENT_TOOLS_SPEC.map(t => ({
+    name: t.name, description: t.description, parameters: t.parameters || { type:'object', properties:{}}
+  }))}];
+}
+function _agentToolUseSupported(provider) {
+  return provider === 'deepseek' || provider === 'gemini';
+}
+function _agentToolUseEnabled() {
+  return localStorage.getItem('wiz_agent_tooluse') !== '0';
+}
+
+async function executeAgentTool(name, args) {
+  args = args || {};
+  try {
+    switch (name) {
+      case 'note_write': {
+        const notes = notesLoad();
+        const t = String(args.title||'').trim();
+        if (!t) return 'Ошибка: пустой заголовок.';
+        const idx = notes.findIndex(n => (n.title||'').trim().toLowerCase() === t.toLowerCase());
+        if (idx >= 0) {
+          notes[idx].body = String(args.body||'');
+          notes[idx].updated = Date.now();
+          notesSave(notes);
+          if (document.getElementById('notesList')) notesRender(document.getElementById('notesSearch')?.value||'');
+          return `Заметка "${t}" обновлена.`;
+        }
+        notes.push({ id:'note_'+Date.now(), title:t, body:String(args.body||''),
+          colorIdx: Math.floor(Math.random()*NOTE_COLORS.length),
+          emojiIdx: Math.floor(Math.random()*NOTE_EMOJIS.length),
+          created: Date.now(), updated: Date.now() });
+        notesSave(notes);
+        if (document.getElementById('notesList')) notesRender(document.getElementById('notesSearch')?.value||'');
+        return `Заметка "${t}" создана.`;
+      }
+      case 'note_append': {
+        const notes = notesLoad();
+        const t = String(args.title||'').trim();
+        const idx = notes.findIndex(n => (n.title||'').trim().toLowerCase() === t.toLowerCase());
+        if (idx >= 0) {
+          notes[idx].body = ((notes[idx].body||'') + '\n\n' + String(args.extra||'')).trim();
+          notes[idx].updated = Date.now();
+          notesSave(notes);
+          if (document.getElementById('notesList')) notesRender('');
+          return `В заметку "${t}" дописано.`;
+        }
+        notes.push({ id:'note_'+Date.now(), title:t, body:String(args.extra||''), colorIdx:0, emojiIdx:0, created:Date.now(), updated:Date.now() });
+        notesSave(notes);
+        if (document.getElementById('notesList')) notesRender('');
+        return `Заметка "${t}" создана (не существовала).`;
+      }
+      case 'notes_list': {
+        const notes = notesLoad();
+        if (!notes.length) return '(нет заметок)';
+        return notes.map(n => `- "${n.title||'(без заголовка)'}" (${(n.body||'').length} симв., обновлена ${new Date(n.updated||0).toLocaleDateString('ru')})`).join('\n');
+      }
+      case 'note_read': {
+        const notes = notesLoad();
+        const t = String(args.title||'').trim().toLowerCase();
+        const n = notes.find(x => (x.title||'').trim().toLowerCase() === t);
+        return n ? `# ${n.title}\n\n${n.body||''}` : `Заметка "${args.title}" не найдена.`;
+      }
+      case 'note_delete': {
+        const notes = notesLoad();
+        const t = String(args.title||'').trim().toLowerCase();
+        const next = notes.filter(n => (n.title||'').trim().toLowerCase() !== t);
+        if (next.length === notes.length) return `Заметка "${args.title}" не найдена.`;
+        notesSave(next);
+        if (document.getElementById('notesList')) notesRender('');
+        return `Заметка "${args.title}" удалена.`;
+      }
+
+      case 'eiti_file_write': {
+        const all = eitiFilesLoad();
+        const n = String(args.name||'').trim();
+        if (!n) return 'Ошибка: пустое имя файла.';
+        const idx = all.findIndex(f => f.name === n);
+        if (idx >= 0) {
+          all[idx].content = String(args.content||'');
+          all[idx].type = 'text';
+          all[idx].updated = Date.now();
+        } else {
+          all.push({ name:n, content:String(args.content||''), type:'text', created:Date.now(), updated:Date.now() });
+        }
+        eitiFilesSave(all);
+        if (document.getElementById('eitiFilesList')) eitiFilesRender('');
+        return `Файл "${n}" сохранён (${String(args.content||'').length} симв.).`;
+      }
+      case 'eiti_file_append': {
+        const all = eitiFilesLoad();
+        const n = String(args.name||'').trim();
+        const idx = all.findIndex(f => f.name === n);
+        if (idx >= 0) {
+          if (all[idx].type === 'table') {
+            return `Ошибка: файл "${n}" — таблица. Используй eiti_file_write для перезаписи.`;
+          }
+          all[idx].content = ((all[idx].content||'') + '\n\n' + String(args.extra||'')).trim();
+          all[idx].updated = Date.now();
+        } else {
+          all.push({ name:n, content:String(args.extra||''), type:'text', created:Date.now(), updated:Date.now() });
+        }
+        eitiFilesSave(all);
+        if (document.getElementById('eitiFilesList')) eitiFilesRender('');
+        return `В файл "${n}" дописано.`;
+      }
+      case 'eiti_files_list': {
+        const all = eitiFilesLoad();
+        if (!all.length) return '(нет файлов)';
+        return all.map(f => {
+          const sz = f.type==='table'
+            ? ((f.cells||[]).length + '×' + ((f.cells[0]||[]).length) + ' клеток')
+            : ((f.content||'').length + ' симв.');
+          return `- "${f.name}" [${f.type||'text'}] ${sz}`;
+        }).join('\n');
+      }
+      case 'eiti_file_read': {
+        const all = eitiFilesLoad();
+        const n = String(args.name||'').trim();
+        const f = all.find(x => x.name === n);
+        if (!f) return `Файл "${n}" не найден.`;
+        if (f.type === 'table') return JSON.stringify({ layout: f.layout||'grid', cells: f.cells||[] });
+        return f.content || '(пусто)';
+      }
+      case 'eiti_file_delete': {
+        const all = eitiFilesLoad();
+        const n = String(args.name||'').trim();
+        const next = all.filter(f => f.name !== n);
+        if (next.length === all.length) return `Файл "${n}" не найден.`;
+        eitiFilesSave(next);
+        if (document.getElementById('eitiFilesList')) eitiFilesRender('');
+        return `Файл "${n}" удалён.`;
+      }
+
+      case 'mem_add': {
+        const rec = await eitiMemSaveEntry({ text: String(args.text||''), tag: String(args.tag||'general'), source: 'ai' });
+        if (typeof eitiMemRefreshUI === 'function') eitiMemRefreshUI();
+        return rec ? `Сохранено в память [${rec.tag}]: ${rec.text.slice(0,80)}` : 'Не удалось сохранить.';
+      }
+      case 'mem_list': {
+        const all = await eitiMemLoadAsync();
+        const filter = args.tag ? all.filter(e => (e.tag||'').toLowerCase() === String(args.tag).toLowerCase()) : all;
+        if (!filter.length) return '(пусто)';
+        return filter.slice(0,40).map(e => `- [${e.tag}] ${e.text}`).join('\n');
+      }
+      case 'mem_delete': {
+        const all = await eitiMemLoadAsync();
+        const q = String(args.query||'').toLowerCase();
+        const tagF = args.tag ? String(args.tag).toLowerCase() : null;
+        const toDel = all.filter(e =>
+          (e.text||'').toLowerCase().includes(q) &&
+          (!tagF || (e.tag||'').toLowerCase() === tagF));
+        if (!toDel.length) return 'Совпадений не найдено.';
+        for (const e of toDel) await eitiMemDeleteEntry(e.id);
+        if (typeof eitiMemRefreshUI === 'function') eitiMemRefreshUI();
+        return `Удалено ${toDel.length} запис(ей).`;
+      }
+
+      case 'task_add': {
+        const tags = args.tags
+          ? (Array.isArray(args.tags) ? args.tags : String(args.tags).split(',').map(s=>s.trim()).filter(Boolean))
+          : [];
+        const rec = await eitiBoardAdd({
+          title: String(args.title||'').trim(),
+          description: String(args.description||''),
+          status: String(args.status||'To Do'),
+          priority: String(args.priority||'medium'),
+          dueDate: String(args.date||''),
+          tags
+        });
+        if (typeof eitiBoardRefreshStats === 'function') eitiBoardRefreshStats();
+        return rec ? `Создана задача "${rec.title}" (id: ${rec.id}).` : 'Не удалось.';
+      }
+      case 'task_list': {
+        const all = await eitiBoardLoadAsync();
+        const f = args.status ? all.filter(t => (t.status||'').toLowerCase() === String(args.status).toLowerCase()) : all;
+        if (!f.length) return '(нет задач)';
+        return f.slice(0,40).map(t => `- [${t.id}] [${t.status}] "${t.title}" (${t.priority})${t.dueDate?' до '+t.dueDate:''}`).join('\n');
+      }
+      case 'task_done': {
+        const all = await eitiBoardLoadAsync();
+        const t = all.find(x => x.id === args.id || (x.title||'').toLowerCase() === String(args.title||'').toLowerCase());
+        if (!t) return 'Задача не найдена.';
+        await eitiBoardUpdate(t.id, { status: 'Done' });
+        if (typeof eitiBoardRefreshStats === 'function') eitiBoardRefreshStats();
+        return `Задача "${t.title}" → Done.`;
+      }
+      case 'task_delete': {
+        const all = await eitiBoardLoadAsync();
+        const t = all.find(x => x.id === args.id || (x.title||'').toLowerCase() === String(args.title||'').toLowerCase());
+        if (!t) return 'Задача не найдена.';
+        await eitiBoardDelete(t.id);
+        if (typeof eitiBoardRefreshStats === 'function') eitiBoardRefreshStats();
+        return `Удалена задача "${t.title}".`;
+      }
+
+      default:
+        return `Неизвестный инструмент: ${name}`;
+    }
+  } catch (e) {
+    return '❌ Ошибка выполнения: ' + (e.message || e);
+  }
+}
+
+window._agentStop = false;
+window.stopAgentLoop = function() { window._agentStop = true; };
+
+async function runAgentToolUseLoop({ provider, model, apiKey, userInstr, userText, typing, historyEl, currentChatId, _wizUsedWeb }) {
+  const _liveId = typing.dataset.liveId;
+  const _textEl = document.getElementById(_liveId + '-text');
+  const _senderEl = document.getElementById(_liveId + '-sender');
+  const _finalLabel = wizFinalSenderHTML(provider, _wizUsedWeb);
+
+  const toolSysPrompt = `Ты — автономный агент VELAN EITI. У тебя есть нативные инструменты для управления заметками, EITI-файлами, памятью и доской задач.
+ВАЖНО:
+• Используй ИНСТРУМЕНТЫ (function calling), а не текстовые команды [NOTE_WRITE], <EITI_FILE> и т.п.
+• Если пользователь просит что-то изменить — сначала прочитай (note_read / eiti_file_read / notes_list / eiti_files_list / mem_list / task_list), потом изменяй.
+• Если задача состоит из нескольких шагов — выполняй их по очереди, не пытайся всё запихнуть в один вызов.
+• После выполнения действий — кратко отчитайся пользователю на русском, что сделано.
+• Если все нужные действия выполнены — заверши ответ финальным текстом и не вызывай больше инструментов.`;
+  const instructions = userInstr ? `${userInstr}\n\n${toolSysPrompt}` : toolSysPrompt;
+
+  const history = [{ role:'user', text: userText }];
+  let liveLog = '';
+  const MAX_ITERS = 10;
+
+  const renderLive = () => {
+    if (_textEl) _textEl.innerHTML = renderMarkdown(liveLog || '⏳ думаю…') + '<span style="opacity:.4">▌</span>';
+    if (historyEl && !historyEl.dataset.userScrolled) historyEl.scrollTop = historyEl.scrollHeight;
+  };
+
+  window._agentStop = false;
+  let lastTextOut = '';
+
+  for (let iter = 0; iter < MAX_ITERS; iter++) {
+    if (window._agentStop) {
+      liveLog += '\n\n⏹ *Остановлено пользователем.*';
+      renderLive();
+      break;
+    }
+
+    let apiUrl, headers, body;
+    if (provider === 'deepseek') {
+      apiUrl = 'https://api.deepseek.com/v1/chat/completions';
+      headers = { 'Content-Type':'application/json', 'Authorization': `Bearer ${apiKey}` };
+      const _dsBudgetMap = { 'deepseek-v4-pro-high': 8000, 'deepseek-v4-pro-xhigh': 20000 };
+      const _dsBudget = _dsBudgetMap[model] || null;
+      const _dsRealModel = model.replace('-high','').replace('-xhigh','');
+      const msgs = [{ role:'system', content: instructions }];
+      for (const h of history) {
+        if (h.role === 'user') msgs.push({ role:'user', content: h.text });
+        else if (h.role === 'assistant') {
+          const msg = { role:'assistant', content: h.text || null };
+          if (h.toolCalls && h.toolCalls.length) {
+            msg.tool_calls = h.toolCalls.map(tc => ({
+              id: tc.id, type:'function',
+              function: { name: tc.name, arguments: JSON.stringify(tc.args||{}) }
+            }));
+          }
+          msgs.push(msg);
+        } else if (h.role === 'tool_result') {
+          msgs.push({ role:'tool', tool_call_id: h.toolCallId, content: h.content });
+        }
+      }
+      body = { model: _dsRealModel, max_tokens: wizGetMaxTokens(), messages: msgs, tools: _agentToolsToOpenAI() };
+      if (_dsBudget) body.thinking = { type:'enabled', budget_tokens: _dsBudget };
+    } else { // gemini
+      apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+      headers = { 'Content-Type':'application/json' };
+      const contents = [];
+      for (const h of history) {
+        if (h.role === 'user') contents.push({ role:'user', parts:[{ text: h.text }] });
+        else if (h.role === 'assistant') {
+          const parts = [];
+          if (h.text) parts.push({ text: h.text });
+          if (h.toolCalls) for (const tc of h.toolCalls) parts.push({ functionCall: { name: tc.name, args: tc.args||{} }});
+          if (parts.length) contents.push({ role:'model', parts });
+        } else if (h.role === 'tool_result') {
+          // Gemini ожидает functionResponse в роли 'user' (или 'function'/'tool' — но 'user' работает стабильно)
+          contents.push({ role:'user', parts:[{ functionResponse: { name: h.toolName, response: { content: h.content } } }] });
+        }
+      }
+      body = {
+        contents,
+        systemInstruction: { parts:[{ text: instructions }] },
+        tools: _agentToolsToGemini(),
+        generationConfig: { maxOutputTokens: wizGetMaxTokens() }
+      };
+    }
+
+    const resp = await fetch(apiUrl, { method:'POST', headers, body: JSON.stringify(body) });
+    if (!resp.ok) {
+      const errd = await resp.json().catch(()=>({}));
+      throw new Error(errd.error?.message || `HTTP ${resp.status}`);
+    }
+    const data = await resp.json();
+
+    let textOut = '';
+    let toolCalls = [];
+    if (provider === 'deepseek') {
+      const m = data.choices?.[0]?.message;
+      textOut = m?.content || '';
+      toolCalls = (m?.tool_calls || []).map(tc => ({
+        id: tc.id,
+        name: tc.function?.name,
+        args: (() => { try { return JSON.parse(tc.function?.arguments || '{}'); } catch { return {}; } })()
+      }));
+    } else { // gemini
+      const parts = data.candidates?.[0]?.content?.parts || [];
+      parts.forEach(p => {
+        if (p.text) textOut += p.text;
+        if (p.functionCall) toolCalls.push({
+          id: 'gem_'+Math.random().toString(36).slice(2,9),
+          name: p.functionCall.name,
+          args: p.functionCall.args || {}
+        });
+      });
+    }
+
+    history.push({ role:'assistant', text: textOut, toolCalls: toolCalls.length ? toolCalls : null });
+
+    if (textOut && textOut !== lastTextOut) {
+      if (liveLog) liveLog += '\n\n';
+      liveLog += textOut;
+      lastTextOut = textOut;
+      renderLive();
+    }
+
+    if (!toolCalls.length) break;
+
+    for (const tc of toolCalls) {
+      if (window._agentStop) break;
+      const argsStr = Object.entries(tc.args||{}).map(([k,v]) => `${k}=${JSON.stringify(v).slice(0,50)}`).join(', ');
+      liveLog += `\n\n🛠 \`${tc.name}\`(${argsStr})`;
+      renderLive();
+      const result = await executeAgentTool(tc.name, tc.args);
+      const resStr = typeof result === 'string' ? result : JSON.stringify(result);
+      const preview = resStr.slice(0, 400);
+      liveLog += `\n→ ${preview}${resStr.length>preview.length?'…':''}`;
+      renderLive();
+      history.push({ role:'tool_result', toolCallId: tc.id, toolName: tc.name, content: resStr });
+    }
+  }
+
+  if (_textEl) _textEl.innerHTML = renderMarkdown(liveLog || '(нет ответа)');
+  if (_senderEl) _senderEl.innerHTML = _finalLabel;
+  if (db) dbPut('messages', { role:'assistant', content: liveLog, ts: Date.now(), panel: activePanel, chatId: currentChatId });
+}
+
 
 async function sendMessage(inputEl, historyEl) {
   const text = inputEl.value.trim();
@@ -4489,6 +4914,42 @@ Connect any AI provider in settings! I'll become a powerful productivity tool.`;
 
     if (!navigator.onLine) {
       appendMsg('❌ Нет интернет-соединения. Для работы с внешними API нужна сеть.', 'ai', historyEl);
+      return;
+    }
+
+    // ── v1.7.8: NATIVE TOOL-USE для агента (DeepSeek / Gemini) ─────────────
+    if (activePanel === 'agent' && _agentToolUseSupported(provider) && _agentToolUseEnabled()) {
+      try {
+        await runAgentToolUseLoop({
+          provider, model, apiKey,
+          userInstr: userInstr,
+          userText: messageWithFiles,
+          typing, historyEl, currentChatId, _wizUsedWeb
+        });
+        // Кнопки 📋 🔊 в финальный пузырь
+        const _msgId = 'msg-' + Date.now();
+        const _liveId = typing.dataset.liveId;
+        const _textElPost = document.getElementById(_liveId + '-text');
+        if (_textElPost) _textElPost.id = _msgId;
+        const _existMeta = typing.querySelector('.msg-meta');
+        if (_existMeta && !_existMeta.querySelector('.msg-actions')) {
+          const _actDiv = document.createElement('div');
+          _actDiv.className = 'msg-actions';
+          _actDiv.innerHTML = `<button class="msg-action-btn" onclick="copyMessage('${_msgId}')" title="Копировать">📋</button><button class="msg-action-btn tts-btn" data-msgid="${_msgId}" onclick="toggleSpeech('${_msgId}',document.getElementById('${_msgId}').innerText)" title="Озвучить">🔊</button>`;
+          _existMeta.appendChild(_actDiv);
+        }
+        typing.id = '';
+      } catch (e) {
+        const _errEl = document.getElementById((typing.dataset?.liveId||'') + '-text');
+        if (_errEl) {
+          _errEl.innerHTML = `<span style="color:#ff6b6b">❌ Ошибка агента: ${e.message}</span>`;
+        } else {
+          appendMsg(`❌ Ошибка агента: ${e.message}`, 'ai', historyEl);
+        }
+      } finally {
+        const _ind = document.getElementById('typing-indicator');
+        if (_ind) _ind.remove();
+      }
       return;
     }
 
@@ -5322,6 +5783,14 @@ function populateModels(provider, savedModel) {
     saveConfigField(id.replace('cfg','').toLowerCase(), e.target.checked);
   });
 });
+
+// v1.7.8: инициализация переключателя tool-use для агента из localStorage
+(function initAgentToolUseToggle(){
+  const el = document.getElementById('cfgAgentToolUse');
+  if (!el) return;
+  const v = localStorage.getItem('wiz_agent_tooluse');
+  el.checked = v !== '0';
+})();
 
 // ── OpenRouter dedicated key block ────────────────────────────────────────
 
