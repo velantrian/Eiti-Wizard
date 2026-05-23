@@ -5112,130 +5112,75 @@ AI провайдеры: Ollama (офлайн, localhost:11434), Claude, OpenAI,
     const lowerText = text.toLowerCase().trim();
     const isRussian = /[а-яё]/.test(text);
 
-    // Fallback ответы только когда AI провайдер НЕ выбран
-    if (!provider || provider === '') {
-    const isGreeting = /^(привет|привет!|привет как дела|привет как ты|привет как вы|hello|hi|hey|howdy|greetings)\??!?$/.test(lowerText);
-    const isAboutCapabilities = /что ты (умеешь|можешь|делаешь|умеете|можете|делаете)|для чего ты|для чего вы|what can you|what do you do|what can i do|tell me about|расскажи|возможности|capabilities|features|что ты|что я могу|что можно|можно ли/.test(lowerText);
+    // Offline-режим: нет провайдера ИЛИ нет API-ключа (Ollama — исключение, работает локально)
+    const _isOllama  = provider === 'ollama';
+    const _hasApi    = !!apiKey;
+    const _isOffline = !provider || provider === '' || (!_isOllama && !_hasApi);
+    const offlineBadge = isRussian
+      ? '\n\n— — —\n*(🔴 **offline** · AI не подключён — система работает локально. Подключите провайдера в Настройках ⚙️)*'
+      : '\n\n— — —\n*(🔴 **offline** · AI is not connected — running locally. Connect a provider in Settings ⚙️)*';
+
+    if (_isOffline) {
+    const isGreeting = /^(прив(ет|ки)|здаров[оа]|здравствуй(те)?|добр(ое|ый|ой) (день|утро|вечер)|hi|hello|hey|howdy|greetings|yo)[!?.\s]*$/i.test(lowerText);
+    const isHowAreYou = /^(как (дел[аи]|ты|вы|жизнь|настроение|оно|сам)|что нового|как сам|как сама|как делишки|how are you|how('s| is) it going|whats up|what'?s up|sup)[!?.\s]*$/i.test(lowerText);
+    const isThanks = /^(спасибо|спс|благодарю|сенкс|thx|thanks|thank you|ty)[!?.\s]*$/i.test(lowerText);
+    const isBye = /^(пока|до свидания|увидимся|чао|bye|goodbye|see you|cya|later)[!?.\s]*$/i.test(lowerText);
+    const isYes = /^(да|ага|угу|ок|окей|ладно|хорошо|yes|yeah|yep|ok|okay|sure|fine)[!?.\s]*$/i.test(lowerText);
+    const isNo  = /^(нет|неа|не|нет уж|no|nope|nah)[!?.\s]*$/i.test(lowerText);
+    const isWhoAreYou = /(кто ты|ты кто|что ты такое|твоё имя|твоя сущность|представься|who are you|what are you|your name|introduce yourself)/i.test(lowerText);
+    const isAboutCapabilities = /что ты (умеешь|можешь|делаешь|умеете|можете|делаете)|для чего ты|для чего вы|what can you|what do you do|what can i do|tell me about|расскажи|возможности|capabilities|features|что я могу|что можно|можно ли/.test(lowerText);
     const isAboutArchitecture = /как (система|приложение|это) (устроена|устроена|работает|функционирует)|как работает|архитектура|устройство|структура|how (does|is) (it|system|app|this) (built|structured|work)|architecture|explain/.test(lowerText);
 
+    let offlineReply = null;
+
     if (isGreeting) {
-      const greetingReply = isRussian
-        ? `👋 Привет! Я Velan Eiti — персональный помощник для работы с AI.\n\n💭 **О моем статусе:**
-Я не настоящий AI, а скорее интеллектуальный интерфейс для подключения к различным AI провайдерам (Claude, DeepSeek, OpenAI, Groq, OpenRouter и локальный Ollama).\n\n🎯 **Мои основные возможности:**
-• Организация чатов и агентских сессий
-• Работа с файлами (PDF, TXT, DOCX, изображения)
-• Сохранение памяти между разговорами
-• Работа полностью в браузере (IndexedDB)
-• Офлайн режим через Ollama\n\n⚡ **Ограничения:**
-Без подключенного AI провайдера я могу только отвечать на простые вопросы о себе. Для полноценного взаимодействия нужен AI.\n\n🚀 **Что дальше?**
-Спросите меня что я умею, или как система устроена! Или подключите AI в настройках.`
-        : `👋 Hi! I'm Velan Eiti — your personal assistant for AI interaction.\n\n💭 **About my status:**
-I'm not a real AI, but rather an intelligent interface for connecting to various AI providers (Claude, DeepSeek, OpenAI, Groq, OpenRouter, and local Ollama).\n\n🎯 **My main capabilities:**
-• Organize chats and agent sessions
-• Work with files (PDF, TXT, DOCX, images)
-• Save memory between conversations
-• Work entirely in browser (IndexedDB)
-• Offline mode via Ollama\n\n⚡ **Limitations:**
-Without a connected AI provider, I can only answer simple questions about myself. For full interaction, an AI is needed.\n\n🚀 **What's next?**
-Ask me what I can do, or how the system works! Or connect AI in settings.`;
-      appendMsg(greetingReply, 'ai', historyEl);
-      if (db) dbPut('messages', { role: 'assistant', content: greetingReply, ts: Date.now(), panel: activePanel, chatId: currentChatId });
-      typing.remove();
-      return;
+      offlineReply = isRussian
+        ? '👋 Привет! Рад тебя видеть. Я **Velan Eiti** — интерфейс для общения с AI (Claude, OpenAI, DeepSeek, Gemini, Groq, Ollama).'
+        : '👋 Hi! Nice to see you. I\'m **Velan Eiti** — an interface for chatting with AI (Claude, OpenAI, DeepSeek, Gemini, Groq, Ollama).';
+    } else if (isHowAreYou) {
+      offlineReply = isRussian
+        ? '😊 Хорошо, спасибо! А как у тебя дела? Если хочешь полноценный разговор — подключи AI-провайдера в настройках.'
+        : '😊 Doing well, thanks! How about you? If you want a full conversation — connect an AI provider in settings.';
+    } else if (isThanks) {
+      offlineReply = isRussian
+        ? '🙏 Пожалуйста! Обращайся.'
+        : '🙏 You\'re welcome! Anytime.';
+    } else if (isBye) {
+      offlineReply = isRussian
+        ? '👋 Пока! Возвращайся.'
+        : '👋 Bye! Come back soon.';
+    } else if (isYes) {
+      offlineReply = isRussian
+        ? '👍 Понял. Что хочешь обсудить дальше? Учти — без подключённого AI я отвечаю простыми шаблонами.'
+        : '👍 Got it. What\'s next? Note — without a connected AI, I only reply with simple templates.';
+    } else if (isNo) {
+      offlineReply = isRussian
+        ? '👌 Хорошо, как скажешь. Если передумаешь — я здесь.'
+        : '👌 Alright, as you wish. If you change your mind — I\'m here.';
+    } else if (isWhoAreYou) {
+      offlineReply = isRussian
+        ? '🤖 Я **Velan Eiti** v1.7.7 — не настоящий AI, а лёгкий браузерный интерфейс для подключения к LLM-провайдерам. Работаю на чистом HTML/JS, храню всё локально в IndexedDB.'
+        : '🤖 I\'m **Velan Eiti** v1.7.7 — not a real AI, but a lightweight browser interface for LLM providers. Pure HTML/JS, everything stored locally in IndexedDB.';
+    } else if (isAboutArchitecture) {
+      offlineReply = isRussian
+        ? '🏗️ **Архитектура Velan Eiti:** один HTML-файл, чистый JS, IndexedDB для всего (чаты, файлы, память), 13 тем, PWA-режим. Провайдеры: Claude, OpenAI, DeepSeek, Gemini, Groq, OpenRouter, Ollama (локально).'
+        : '🏗️ **Velan Eiti architecture:** single HTML file, pure JS, IndexedDB for everything (chats, files, memory), 13 themes, PWA mode. Providers: Claude, OpenAI, DeepSeek, Gemini, Groq, OpenRouter, Ollama (local).';
+    } else if (isAboutCapabilities) {
+      offlineReply = isRussian
+        ? '🎯 **Мои возможности:** чат с AI, агент-режим (читает файлы, пишет код), память (L0–L3 + EITI), история чатов, RAG по файлам (PDF/TXT/DOCX), офлайн через Ollama, 13 тем, PWA. Подключи AI в настройках — и всё это оживёт.'
+        : '🎯 **My capabilities:** AI chat, agent mode (reads files, writes code), memory (L0–L3 + EITI), chat history, RAG over files (PDF/TXT/DOCX), offline via Ollama, 13 themes, PWA. Connect AI in settings to unlock it all.';
+    } else {
+      // Любое другое сообщение — generic дружелюбный ответ
+      offlineReply = isRussian
+        ? `💬 Я тебя услышал: «${text.slice(0, 80)}${text.length>80?'…':''}»\n\nНо чтобы дать осмысленный ответ, мне нужен подключённый AI. Подключи провайдера в **Настройках** — Claude, OpenAI, DeepSeek, Gemini или локальный Ollama.`
+        : `💬 I heard you: "${text.slice(0, 80)}${text.length>80?'…':''}"\n\nBut to give a meaningful reply I need a connected AI. Connect a provider in **Settings** — Claude, OpenAI, DeepSeek, Gemini or local Ollama.`;
     }
 
-    if (isAboutArchitecture) {
-      const archReply = isRussian
-        ? `🏗️ **Архитектура Velan Eiti:**
-
-**Основной стек:**
-Всё построено на чистом HTML/CSS/JavaScript в одном файле — никаких фреймворков, никаких зависимостей. Это делает приложение очень легким (328 КБ) и быстрым.\n\n**Хранилище (IndexedDB):**
-Все данные хранятся локально в браузере:
-- 💬 Чаты и сообщения
-- 🧠 Память (ключ-значение для контекста)
-- 📄 Файлы и их чанки (для RAG)
-- ⚙️ Конфигурация и настройки\n\n**AI Провайдеры:**
-- 🏠 Ollama (локально, localhost:11434, 100% офлайн)
-- 🤖 Claude (Anthropic API)
-- 📘 OpenAI (ChatGPT и модели)
-- 🟣 DeepSeek (AI провайдер)
-- ⚡ Groq (быстрые инференции)
-- 🔄 OpenRouter (агрегатор моделей)\n\n**Режимы работы:**
-- 💬 **Чат** — обычный диалог с выбранным AI
-- ⚡ **Агент** — автономный режим (читает файлы, пишет код, запускает команды)
-- 🧠 **Память** — хранилище важных данных между сессиями
-- 📜 **История** — архив всех чатов, экспорт в JSON/TXT
-- 📁 **Файлы** — загрузка и RAG (поиск релевантных фрагментов)
-- ⚙️ **Настройки** — выбор провайдера, модели, языка, темы\n\n**PWA Функции:**
-Приложение работает как Native App — устанавливается на экран, работает офлайн (через Ollama), имеет Service Worker.\n\n**Оформление:**
-13 уникальных тем на выбор — светлые, темные, контрастные варианты.`
-        : `🏗️ **Velan Eiti Architecture:**
-
-**Core Stack:**
-Everything built with pure HTML/CSS/JavaScript in one file — no frameworks, no dependencies. This makes it lightweight (328 KB) and fast.\n\n**Storage (IndexedDB):**
-All data stored locally in browser:
-- 💬 Chats and messages
-- 🧠 Memory (key-value for context)
-- 📄 Files and chunks (for RAG)
-- ⚙️ Configuration and settings\n\n**AI Providers:**
-- 🏠 Ollama (local, localhost:11434, 100% offline)
-- 🤖 Claude (Anthropic API)
-- 📘 OpenAI (ChatGPT and models)
-- 🟣 DeepSeek (AI provider)
-- ⚡ Groq (fast inference)
-- 🔄 OpenRouter (model aggregator)\n\n**Work Modes:**
-- 💬 **Chat** — regular dialog with selected AI
-- ⚡ **Agent** — autonomous mode (reads files, writes code, runs commands)
-- 🧠 **Memory** — storage for important data between sessions
-- 📜 **History** — archive of all chats, export to JSON/TXT
-- 📁 **Files** — upload and RAG (search relevant chunks)
-- ⚙️ **Settings** — choose provider, model, language, theme\n\n**PWA Features:**
-App works like Native App — installs on screen, works offline (via Ollama), has Service Worker.\n\n**Design:**
-13 unique themes to choose from — light, dark, contrast variants.`;
-      appendMsg(archReply, 'ai', historyEl);
-      if (db) dbPut('messages', { role: 'assistant', content: archReply, ts: Date.now(), panel: activePanel, chatId: currentChatId });
-      typing.remove();
-      return;
-    }
-
-    if (isAboutCapabilities) {
-      const capabilitiesReply = isRussian
-        ? `🎯 **Мои возможности (без подключенного AI):**
-
-⚠️ **Важно знать:** Я сам по себе не AI, а контейнер для работы с различными AI. Мои встроенные ответы ограничены и не могут заменить настоящий AI.\n\n📝 **Чат:**
-Разговариваю с любым подключенным AI — Claude, DeepSeek, OpenAI, Groq, OpenRouter или локально Ollama. Ваши сообщения идут прямиком к выбранному AI.\n\n⚡ **Агент:**
-Выполняю сложные задачи пошагово — читаю файлы, пишу и запускаю код, выполняю команды. Это как иметь личного помощника, который может всё делать автономно.\n\n🧠 **Память:**
-Сохраняю важные факты и данные в хранилище (key-value). Это помогает AI запомнить контекст между разными разговорами.\n\n📜 **История:**
-Все ваши чаты и агентские сессии сохраняются. Можно искать по сообщениям, фильтровать, экспортировать в JSON или TXT.\n\n📁 **Файлы:**
-Загружаю PDF, TXT, DOCX, изображения. Использую RAG (Retrieval-Augmented Generation) — умный поиск релевантных кусков текста для контекста.\n\n⚙️ **Настройки:**
-Выбираю AI провайдера, модель, язык интерфейса, одну из 13 тем оформления.\n\n💾 **Офлайн режим:**
-Работаю полностью в браузере через IndexedDB. С Ollama могу работать без интернета.\n\n🚀 **Как получить максимум?**
-Подключите любой AI провайдер в настройках! Я превращусь в мощный инструмент для продуктивности.`
-        : `🎯 **My capabilities (without connected AI):**
-
-⚠️ **Important:** I'm not an AI myself, but a container for working with various AIs. My built-in answers are limited and can't replace a real AI.\n\n📝 **Chat:**
-Talk with any connected AI — Claude, DeepSeek, OpenAI, Groq, OpenRouter, or local Ollama. Your messages go straight to the selected AI.\n\n⚡ **Agent:**
-Execute complex tasks step-by-step — read files, write and run code, execute commands. It's like having a personal assistant who can do everything autonomously.\n\n🧠 **Memory:**
-Save important facts and data in storage (key-value). Helps AI remember context between different conversations.\n\n📜 **History:**
-All your chats and agent sessions are saved. Search messages, filter, export to JSON or TXT.\n\n📁 **Files:**
-Upload PDF, TXT, DOCX, images. Use RAG (Retrieval-Augmented Generation) — smart search for relevant text chunks for context.\n\n⚙️ **Settings:**
-Choose AI provider, model, interface language, one of 13 design themes.\n\n💾 **Offline Mode:**
-Work entirely in browser via IndexedDB. With Ollama, work without internet.\n\n🚀 **How to get maximum?**
-Connect any AI provider in settings! I'll become a powerful productivity tool.`;
-      appendMsg(capabilitiesReply, 'ai', historyEl);
-      if (db) dbPut('messages', { role: 'assistant', content: capabilitiesReply, ts: Date.now(), panel: activePanel, chatId: currentChatId });
-      typing.remove();
-      return;
-    }
-
-    // AI не подключен и вопрос не о системе — показываем ошибку
-      const msg = isRussian
-        ? '⚠️ AI сейчас не подключен. Выберите провайдера в настройках (Ollama, Claude, DeepSeek и др.)\n\n💡 Я могу ответить на вопросы про себя даже без AI!'
-        : '⚠️ AI is not connected now. Select a provider in settings (Ollama, Claude, DeepSeek, etc.)\n\n💡 I can answer questions about myself even without AI!';
-      appendMsg(msg, 'ai', historyEl);
-      typing.remove();
-      return;
-    } // end if (!provider)
+    appendMsg(offlineReply + offlineBadge, 'ai', historyEl);
+    if (db) dbPut('messages', { role: 'assistant', content: offlineReply + offlineBadge, ts: Date.now(), panel: activePanel, chatId: currentChatId });
+    typing.remove();
+    return;
+    } // end if (_isOffline)
 
     // Ollama (офлайн)
     if (provider === 'ollama') {
