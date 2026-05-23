@@ -4571,14 +4571,15 @@ async function runAgentToolUseLoop({ provider, model, apiKey, userInstr, userTex
   const _senderEl = document.getElementById(_liveId + '-sender');
   const _finalLabel = wizFinalSenderHTML(provider, _wizUsedWeb);
 
-  const toolSysPrompt = `Ты — автономный агент VELAN EITI. У тебя есть нативные инструменты для управления заметками, EITI-файлами, памятью, доской задач, а также для чтения истории чат-сессий пользователя.
-ВАЖНО:
-• Используй ИНСТРУМЕНТЫ (function calling), а не текстовые команды [NOTE_WRITE], <EITI_FILE> и т.п.
-• Если пользователь упоминает чат по имени («что мы обсуждали с Лёвой», «в чате про проект») — используй chats_list чтобы увидеть доступные сессии, затем chat_read для нужной. Можно искать по тексту через chat_search.
-• Если пользователь просит что-то изменить — сначала прочитай (note_read / eiti_file_read / notes_list / eiti_files_list / mem_list / task_list / chats_list / chat_read), потом изменяй.
-• Если задача состоит из нескольких шагов — выполняй их по очереди, не пытайся всё запихнуть в один вызов.
-• После выполнения действий — кратко отчитайся пользователю на русском, что сделано.
-• Если все нужные действия выполнены — заверши ответ финальным текстом и не вызывай больше инструментов.`;
+  const toolSysPrompt = `Ты — агент VELAN EITI. У тебя есть нативные инструменты для управления заметками, EITI-файлами, памятью, доской задач и чтения чат-сессий пользователя.
+
+ПРАВИЛА:
+1. Если на вопрос можно ответить без инструментов — просто отвечай текстом, не вызывай ничего.
+2. Инструменты используй только когда они реально нужны для запроса.
+3. Если пользователь упоминает чат по имени («что обсуждали с Лёвой») — используй chat_read(title:"Лёва") или chat_search.
+4. Перед изменением — прочитай (note_read / eiti_file_read / mem_list / task_list / chat_read).
+5. ОБЯЗАТЕЛЬНО заверши ответ ОБЫЧНЫМ ТЕКСТОМ на русском после всех инструментов — расскажи пользователю что сделал / что нашёл. Без финального текста пользователь не увидит результата.
+6. Никогда не возвращай пустой ответ. Если инструменты не нужны и ответить нечего — напиши хотя бы короткое подтверждение.`;
   const instructions = userInstr ? `${userInstr}\n\n${toolSysPrompt}` : toolSysPrompt;
 
   const history = [{ role:'user', text: userText }];
@@ -4703,9 +4704,71 @@ async function runAgentToolUseLoop({ provider, model, apiKey, userInstr, userTex
     }
   }
 
-  if (_textEl) _textEl.innerHTML = renderMarkdown(liveLog || '(нет ответа)');
+  // v1.7.8: если модель отработала инструменты но не дала финальный текст —
+  // делаем один доп. запрос БЕЗ инструментов, чтобы вынудить ответ текстом.
+  const lastAssistant = [...history].reverse().find(h => h.role === 'assistant');
+  const hasFinalText = lastAssistant && lastAssistant.text && !(lastAssistant.toolCalls && lastAssistant.toolCalls.length);
+  if (!hasFinalText && !window._agentStop && history.some(h => h.role === 'tool_result')) {
+    try {
+      let apiUrl, headers, body;
+      if (provider === 'deepseek') {
+        apiUrl = 'https://api.deepseek.com/v1/chat/completions';
+        headers = { 'Content-Type':'application/json', 'Authorization': `Bearer ${apiKey}` };
+        const _dsRealModel = model.replace('-high','').replace('-xhigh','');
+        const msgs = [{ role:'system', content: instructions + '\n\nЗаверши ответ обычным текстом — расскажи пользователю что сделал.' }];
+        for (const h of history) {
+          if (h.role === 'user') msgs.push({ role:'user', content: h.text });
+          else if (h.role === 'assistant') {
+            const msg = { role:'assistant', content: h.text || null };
+            if (h.toolCalls && h.toolCalls.length) {
+              msg.tool_calls = h.toolCalls.map(tc => ({ id: tc.id, type:'function', function: { name: tc.name, arguments: JSON.stringify(tc.args||{}) } }));
+            }
+            msgs.push(msg);
+          } else if (h.role === 'tool_result') {
+            msgs.push({ role:'tool', tool_call_id: h.toolCallId, content: h.content });
+          }
+        }
+        body = { model: _dsRealModel, max_tokens: 2000, messages: msgs };
+      } else {
+        apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+        headers = { 'Content-Type':'application/json' };
+        const contents = [];
+        for (const h of history) {
+          if (h.role === 'user') contents.push({ role:'user', parts:[{ text: h.text }] });
+          else if (h.role === 'assistant') {
+            const parts = [];
+            if (h.text) parts.push({ text: h.text });
+            if (h.toolCalls) for (const tc of h.toolCalls) parts.push({ functionCall: { name: tc.name, args: tc.args||{} }});
+            if (parts.length) contents.push({ role:'model', parts });
+          } else if (h.role === 'tool_result') {
+            contents.push({ role:'user', parts:[{ functionResponse: { name: h.toolName, response: { content: h.content } } }] });
+          }
+        }
+        body = {
+          contents,
+          systemInstruction: { parts:[{ text: instructions + '\n\nЗаверши ответ обычным текстом — расскажи пользователю что сделал.' }] },
+          generationConfig: { maxOutputTokens: 2000 }
+        };
+      }
+      const r = await fetch(apiUrl, { method:'POST', headers, body: JSON.stringify(body) });
+      if (r.ok) {
+        const d = await r.json();
+        let finalText = '';
+        if (provider === 'deepseek') finalText = d.choices?.[0]?.message?.content || '';
+        else (d.candidates?.[0]?.content?.parts || []).forEach(p => { if (p.text) finalText += p.text; });
+        if (finalText) {
+          if (liveLog) liveLog += '\n\n';
+          liveLog += finalText;
+        }
+      }
+    } catch (e) { /* ничего — покажем что есть */ }
+  }
+
+  // Финальный рендер
+  const finalContent = liveLog || '⚠️ Модель не вернула ответ. Попробуй ещё раз или проверь API-ключ.';
+  if (_textEl) _textEl.innerHTML = renderMarkdown(finalContent);
   if (_senderEl) _senderEl.innerHTML = _finalLabel;
-  if (db) dbPut('messages', { role:'assistant', content: liveLog, ts: Date.now(), panel: activePanel, chatId: currentChatId });
+  if (db) dbPut('messages', { role:'assistant', content: finalContent, ts: Date.now(), panel: activePanel, chatId: currentChatId });
 }
 
 
@@ -4744,8 +4807,12 @@ async function sendMessage(inputEl, historyEl) {
     provider = document.getElementById('cfgProvider').value;
     model    = document.getElementById('cfgModel').value;
   }
-  // API key — берём специфичный для провайдера, иначе общий
-  const apiKey = sessionStorage.getItem('cfgApiKey_' + provider) || sessionStorage.getItem('cfgApiKey');
+  // API key — приоритетно для конкретного провайдера. Legacy-слот используется
+  // только если провайдер совпадает с текущим в Чат-дропдауне (иначе там чужой ключ).
+  const apiKey = sessionStorage.getItem('cfgApiKey_' + provider) ||
+                 (provider === document.getElementById('cfgProvider')?.value
+                   ? (sessionStorage.getItem('cfgApiKey') || '')
+                   : '');
 
   // Thinking mode detection — до typing, чтобы сразу показать анимацию
   const _wizThinkMode = wizDetectThinkMode(text, model, provider);
@@ -4825,9 +4892,9 @@ AI провайдеры: Ollama (офлайн, localhost:11434), Claude, OpenAI,
   }
 
   // ── Контекст чата для агента — группируем по чат-сессиям с названиями ──
-  // v1.7.8: вместо плоского списка из 12 сообщений теперь даём агенту
-  // карту чатов (id, название, число сообщений) + по 4 последних реплики из
-  // каждого. Для активного чата — глубже (10 реплик).
+  // v1.7.8: даём агенту краткую карту последних чатов: список сессий + последние
+  // реплики из активной. Остальные сессии — только заголовок + 2 реплики.
+  // Полную историю агент берёт через инструменты chats_list / chat_read / chat_search.
   if (activePanel === 'agent' && db) {
     try {
       const [allMsgs, allChats] = await Promise.all([dbGetAll('messages'), dbGetAll('chats')]);
@@ -4839,23 +4906,25 @@ AI провайдеры: Ollama (офлайн, localhost:11434), Claude, OpenAI,
       });
       const chatIds = Object.keys(byChat);
       if (chatIds.length) {
-        // сортируем чаты по последней активности (новые сверху), берём максимум 6
+        // сортируем чаты по последней активности (новые сверху)
         chatIds.sort((a, b) => {
           const ta = Math.max.apply(null, byChat[a].map(m => m.ts || 0));
           const tb = Math.max.apply(null, byChat[b].map(m => m.ts || 0));
           return tb - ta;
         });
-        const topChats = chatIds.slice(0, 6);
+        const topChats = chatIds.slice(0, 4);
         let ctxBlocks = [];
         topChats.forEach(cid => {
           const msgs = byChat[cid].sort((a, b) => (a.ts || 0) - (b.ts || 0));
-          const limit = (cid === activeChatId) ? 10 : 4;
+          const isActive = (cid === activeChatId);
+          const limit = isActive ? 6 : 2;
+          const charLimit = isActive ? 280 : 140;
           const tail = msgs.slice(-limit);
           const title = chatTitles[cid] || cid.slice(-4);
-          const block = tail.map(m => `${m.role === 'user' ? 'Пользователь' : 'AI'}: ${(m.content||'').slice(0, 400)}`).join('\n');
-          ctxBlocks.push(`### Чат "${title}" (id=${cid}, всего ${msgs.length} сообщ.)\n${block}`);
+          const block = tail.map(m => `${m.role === 'user' ? 'Пользователь' : 'AI'}: ${(m.content||'').slice(0, charLimit)}`).join('\n');
+          ctxBlocks.push(`«${title}» (id=${cid}, всего ${msgs.length} сообщ.)${isActive?' ← АКТИВНЫЙ':''}\n${block}`);
         });
-        messageWithFiles += `\n\n[Контекст чатов пользователя]\nДоступные чат-сессии и последние реплики (полную историю можно получить инструментами chats_list / chat_read / chat_search):\n\n` + ctxBlocks.join('\n\n') + `\n\n[Конец контекста чатов]`;
+        messageWithFiles += `\n\n[Чаты пользователя — превью. Полную историю любого чата читай через chat_read(chatId или title), поиск — chat_search(query).]\n` + ctxBlocks.join('\n\n');
       }
     } catch (e) {}
   }
@@ -5075,7 +5144,19 @@ Connect any AI provider in settings! I'll become a powerful productivity tool.`;
 
     // Внешние API (DeepSeek, Claude, OpenAI, Groq, OpenRouter)
     if (!apiKey) {
-      appendMsg('❌ API Key не установлен. Введите ключ в настройках и нажмите "Активировать".', 'ai', historyEl);
+      const _isAgentDifferent = activePanel === 'agent' && !_agSameAsChat;
+      const msg = _isAgentDifferent
+        ? `❌ Для агент-провайдера "${provider}" не задан API ключ. Открой Настройки → Провайдер (Чат) → выключи «тот же что у чата» → введи ключ в поле «API Key — Агент».`
+        : '❌ API Key не установлен. Введите ключ в настройках и нажмите "Активировать".';
+      const _typEl = typing && document.getElementById((typing.dataset?.liveId||'') + '-text');
+      if (_typEl) {
+        _typEl.innerHTML = `<span style="color:#ff6b6b">${msg}</span>`;
+        if (typing) typing.id = '';
+      } else {
+        appendMsg(msg, 'ai', historyEl);
+      }
+      const _ind = document.getElementById('typing-indicator');
+      if (_ind) _ind.remove();
       return;
     }
 
@@ -5113,6 +5194,10 @@ Connect any AI provider in settings! I'll become a powerful productivity tool.`;
         } else {
           appendMsg(`❌ Ошибка агента: ${e.message}`, 'ai', historyEl);
         }
+        // v1.7.8 FIX: убираем id 'typing-indicator' чтобы finally не удалил пузырь с ошибкой
+        if (typing) typing.id = '';
+        // сохраняем ошибку в БД чтобы при перезагрузке она тоже была видна
+        if (db) dbPut('messages', { role:'assistant', content: '❌ Ошибка агента: ' + (e.message||''), ts: Date.now(), panel: activePanel, chatId: currentChatId });
       } finally {
         const _ind = document.getElementById('typing-indicator');
         if (_ind) _ind.remove();
