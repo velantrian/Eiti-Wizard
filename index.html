@@ -2716,14 +2716,20 @@ async function createNewChat() {
 // Загрузка селектора чатов
 async function loadChatSelector() {
   if (!db) return;
-  const chats = await dbGetAll('chats');
+  let chats = await dbGetAll('chats');
   const selector = document.getElementById('chatSelector');
   const chatHeader = document.querySelector('#panel-chat .chat-header');
   selector.innerHTML = '';
 
+  // Если чатов нет — создаём дефолтный, чтобы activeChatId никогда не был null
   if (!chats.length) {
-    if (chatHeader) chatHeader.style.display = 'none';
-    return;
+    const defaultId = 'chat_' + Date.now();
+    const defaultChat = { id: defaultId, title: 'Чат', created: Date.now(), updated: Date.now() };
+    try { await dbAdd('chats', defaultChat); } catch(e) { console.warn('default chat add:', e); }
+    chats = [defaultChat];
+    activeChatId = defaultId;
+    // Подцепляем осиротевшие сообщения (chatId=null или указывают на удалённый чат)
+    await adoptOrphanMessages('chat', defaultId);
   }
 
   if (chatHeader) chatHeader.style.display = '';
@@ -2740,7 +2746,34 @@ async function loadChatSelector() {
 
   if (!activeChatId && chats.length) {
     activeChatId = chats[0].id;
-    await loadChatMessages();
+  }
+  await loadChatMessages();
+}
+
+// Привязывает сообщения без валидного chatId к указанному чату/агенту
+async function adoptOrphanMessages(panel, targetId) {
+  if (!db || !targetId) return;
+  try {
+    const [allMessages, allChats, allAgents] = await Promise.all([
+      dbGetAll('messages'),
+      dbGetAll('chats').catch(() => []),
+      dbGetAll('agents').catch(() => []),
+    ]);
+    const validChatIds = new Set((allChats || []).map(c => c.id));
+    const validAgentIds = new Set((allAgents || []).map(a => a.id));
+    const orphans = allMessages.filter(m => {
+      if (m.panel && m.panel !== panel) return false;
+      if (!m.chatId) return true;
+      if (panel === 'chat'  && !validChatIds.has(m.chatId))  return true;
+      if (panel === 'agent' && !validAgentIds.has(m.chatId)) return true;
+      return false;
+    });
+    if (!orphans.length) return;
+    const tx = db.transaction('messages', 'readwrite');
+    const store = tx.objectStore('messages');
+    orphans.forEach(m => { m.chatId = targetId; m.panel = panel; store.put(m); });
+  } catch(e) {
+    console.warn('adoptOrphanMessages:', e);
   }
 }
 
@@ -2818,14 +2851,19 @@ async function createNewAgent() {
 // Загрузка селектора агентов
 async function loadAgentSelector() {
   if (!db) return;
-  const agents = await dbGetAll('agents');
+  let agents = await dbGetAll('agents');
   const selector = document.getElementById('agentSelector');
   const agentHeader = document.querySelector('#panel-agent .chat-header');
   selector.innerHTML = '';
 
+  // Если агентов нет — создаём дефолтного, чтобы activeAgentId никогда не был null
   if (!agents.length) {
-    if (agentHeader) agentHeader.style.display = 'none';
-    return;
+    const defaultId = 'agent_' + Date.now();
+    const defaultAgent = { id: defaultId, title: 'Агент', created: Date.now(), updated: Date.now() };
+    try { await dbAdd('agents', defaultAgent); } catch(e) { console.warn('default agent add:', e); }
+    agents = [defaultAgent];
+    activeAgentId = defaultId;
+    await adoptOrphanMessages('agent', defaultId);
   }
 
   if (agentHeader) agentHeader.style.display = '';
@@ -2842,8 +2880,8 @@ async function loadAgentSelector() {
 
   if (!activeAgentId && agents.length) {
     activeAgentId = agents[0].id;
-    await loadAgentMessages();
   }
+  await loadAgentMessages();
 }
 
 // Загрузка сообщений текущего агента
@@ -4798,9 +4836,29 @@ async function sendMessage(inputEl, historyEl) {
     wizRenderFileChips();
   }
   
-  // Определяем chatId в зависимости от панели
-  const currentChatId = activePanel === 'chat' ? activeChatId : activeAgentId;
-  if (db) dbPut('messages', { role: 'user', content: text, ts: Date.now(), panel: activePanel, chatId: currentChatId });
+  // Определяем chatId в зависимости от панели.
+  // Страховка: если по какой-то причине нет активного чата/агента — создаём на лету,
+  // чтобы сообщение не сохранилось с chatId=null и не потерялось после перезагрузки.
+  let currentChatId = activePanel === 'chat' ? activeChatId : activeAgentId;
+  if (db && !currentChatId) {
+    try {
+      if (activePanel === 'chat') {
+        const id = 'chat_' + Date.now();
+        await dbAdd('chats', { id, title: 'Чат', created: Date.now(), updated: Date.now() });
+        activeChatId = id; currentChatId = id;
+        await loadChatSelector();
+      } else {
+        const id = 'agent_' + Date.now();
+        await dbAdd('agents', { id, title: 'Агент', created: Date.now(), updated: Date.now() });
+        activeAgentId = id; currentChatId = id;
+        await loadAgentSelector();
+      }
+    } catch(e) { console.warn('auto-create chat/agent:', e); }
+  }
+  if (db && currentChatId) {
+    dbPut('messages', { role: 'user', content: text, ts: Date.now(), panel: activePanel, chatId: currentChatId })
+      .catch(err => console.warn('save user msg:', err));
+  }
 
   // v1.7.8: отдельный провайдер/модель для агента если включено
   const _agSameAsChat = document.getElementById('cfgAgentSameAsChat')?.checked !== false;
