@@ -1554,14 +1554,14 @@ main {
     <!-- ── EITI Files panel ─────────────────────────────────── -->
     <section class="panel" id="panel-eiti-files">
       <div style="display:flex;gap:8px;padding:12px 16px 8px;flex-wrap:wrap">
-        <button onclick="eitiFileNew()" style="flex:1;padding:10px;border-radius:12px;border:none;background:linear-gradient(145deg,var(--gold-dim),var(--gold));color:#000;font-weight:700;font-size:.88rem;cursor:pointer">＋ Новый файл</button>
+        <button onclick="eitiFileNew()" data-i18n="eiti_btn_new" style="flex:1;padding:10px;border-radius:12px;border:none;background:linear-gradient(145deg,var(--gold-dim),var(--gold));color:#000;font-weight:700;font-size:.88rem;cursor:pointer">＋ Новый файл</button>
         <label style="flex:1;padding:10px;border-radius:12px;border:1px solid var(--gold-dim);background:var(--card-bg);color:var(--text);font-size:.88rem;cursor:pointer;text-align:center;font-weight:600">
-          📥 Импорт
+          <span data-i18n="eiti_btn_import">📥 Импорт</span>
           <input type="file" accept=".txt,.md,.json,.html,.csv,.xml" style="display:none" onchange="eitiFileImport(this)">
         </label>
-        <button onclick="eitiFileExportAll()" style="flex:1;padding:10px;border-radius:12px;border:1px solid var(--gold-dim);background:var(--card-bg);color:var(--text);font-size:.88rem;font-weight:600;cursor:pointer">📤 Скачать все</button>
+        <button onclick="eitiFileExportAll()" data-i18n="eiti_btn_export_all" style="flex:1;padding:10px;border-radius:12px;border:1px solid var(--gold-dim);background:var(--card-bg);color:var(--text);font-size:.88rem;font-weight:600;cursor:pointer">📤 Скачать все</button>
       </div>
-      <input id="eitiFilesSearch" placeholder="🔍 Поиск файлов…" oninput="eitiFilesRender(this.value)" style="margin:0 16px 8px;padding:8px 12px;border-radius:10px;border:1px solid var(--gold-dim);background:var(--input-bg);color:var(--text);font-size:.85rem;width:calc(100% - 32px);box-sizing:border-box">
+      <input id="eitiFilesSearch" data-i18n-ph="ph_eiti_search" placeholder="🔍 Поиск файлов…" oninput="eitiFilesRender(this.value)" style="margin:0 16px 8px;padding:8px 12px;border-radius:10px;border:1px solid var(--gold-dim);background:var(--input-bg);color:var(--text);font-size:.85rem;width:calc(100% - 32px);box-sizing:border-box">
       <div id="eitiFilesList" style="flex:1;overflow-y:auto;padding:0 12px 80px;display:flex;flex-direction:column;gap:8px"></div>
     </section>
 
@@ -1656,7 +1656,7 @@ main {
             <button id="newAgentBtn" class="btn-small" style="width:100%" data-i18n="btn_new_agent">+ Новый агент</button>
           </div>
           <div class="field">
-            <label>Экспорт</label>
+            <label data-i18n="lbl_export">Экспорт</label>
             <button id="exportHistoryJson" class="btn-small" style="width:100%">📥 JSON</button>
           </div>
           <div class="field">
@@ -2057,7 +2057,7 @@ main {
           <div class="field">
             <label data-i18n="lbl_theme">Тема интерфейса</label>
             <select id="cfgTheme">
-              <option value="midnight">🌙 Midnight (по умолчанию)</option>
+              <option value="midnight" data-i18n="theme_midnight_default">🌙 Midnight (по умолчанию)</option>
               <option value="plasma">⚡ Plasma</option>
               <option value="forest">🍃 Forest</option>
               <option value="ember">🔥 Ember</option>
@@ -2095,11 +2095,11 @@ main {
           <div class="field">
             <label style="font-size:0.8rem;color:var(--text-dim);margin-bottom:4px;display:block" data-i18n="lbl_voice">Голос</label>
             <select id="grokVoiceSelect" style="width:100%;padding:8px;border-radius:10px;border:1px solid var(--gold-dim);background:var(--input-bg);color:var(--text)">
-              <option value="eve">Eve — энергичный, женский ⭐</option>
-              <option value="ara">Ara — тёплый, женский</option>
-              <option value="rex">Rex — уверенный, мужской</option>
-              <option value="sal">Sal — плавный, мужской</option>
-              <option value="leo">Leo — авторитетный, мужской</option>
+              <option value="eve" data-i18n="voice_eve">Eve — энергичный, женский ⭐</option>
+              <option value="ara" data-i18n="voice_ara">Ara — тёплый, женский</option>
+              <option value="rex" data-i18n="voice_rex">Rex — уверенный, мужской</option>
+              <option value="sal" data-i18n="voice_sal">Sal — плавный, мужской</option>
+              <option value="leo" data-i18n="voice_leo">Leo — авторитетный, мужской</option>
             </select>
           </div>
 
@@ -2110,7 +2110,7 @@ main {
 
           <div class="field" style="margin-top:8px">
             <label style="font-size:0.8rem;color:var(--text-dim);margin-bottom:4px;display:block" data-i18n="lbl_voice_instr">Инструкции для голосового агента</label>
-            <textarea id="grokVoiceInstructions" rows="2" placeholder="Ты полезный ассистент. Отвечай кратко и по делу." style="width:100%;padding:8px 10px;border-radius:10px;border:1px solid var(--gold-dim);background:var(--input-bg);color:var(--text);font-size:0.86rem;resize:none;box-sizing:border-box;"></textarea>
+            <textarea id="grokVoiceInstructions" rows="2" data-i18n-ph="ph_voice_instr" placeholder="Ты полезный ассистент. Отвечай кратко и по делу." style="width:100%;padding:8px 10px;border-radius:10px;border:1px solid var(--gold-dim);background:var(--input-bg);color:var(--text);font-size:0.86rem;resize:none;box-sizing:border-box;"></textarea>
           </div>
 
           <div class="toggle-row" style="margin-top:4px">
@@ -5583,7 +5583,7 @@ async function loadHistory() {
   if (searchQuery) filtered = filtered.filter(i => (i.content||'').toLowerCase().includes(searchQuery));
 
   if (!filtered.length) {
-    cont.innerHTML = '<p style="color:var(--text-dim);font-size:.88rem;padding:10px 0">История пуста.</p>';
+    cont.innerHTML = '<p style="color:var(--text-dim);font-size:.88rem;padding:10px 0">' + ((LANGS[currentLang]||LANGS.ru)?.history_empty || 'История пуста.') + '</p>';
     return;
   }
 
@@ -5724,7 +5724,7 @@ document.getElementById('exportHistoryTxt').addEventListener('click', async () =
 
 // Clear history
 document.getElementById('clearHistory').addEventListener('click', async () => {
-  if (confirm('Удалить всю историю чата?')) {
+  if (confirm((LANGS[currentLang]||LANGS.ru)?.confirm_clear_history || 'Удалить всю историю чата?')) {
     if (db) {
       const tx = db.transaction('messages', 'readwrite');
       tx.objectStore('messages').clear();
@@ -7400,6 +7400,20 @@ const LANGS = {
     ph_project_name:'Название проекта...',
     btn_create_project:'➕ Создать',
     projects_empty:'Проектов нет. Создайте первый!',
+    // v1.7.8 part 3 — EITI files, theme, voices, history exports
+    eiti_btn_new:'＋ Новый файл', eiti_btn_import:'📥 Импорт', eiti_btn_export_all:'📤 Скачать все',
+    ph_eiti_search:'🔍 Поиск файлов…',
+    eiti_empty:'💾 Нет файлов<br><br>Создай новый или импортируй. AI создаёт файлы через команду &lt;EITI_FILE:name.txt&gt;содержимое&lt;/EITI_FILE&gt;',
+    theme_midnight_default:'🌙 Midnight (по умолчанию)',
+    theme_azure_default:'💎 Azure (по умолчанию)',
+    voice_eve:'Eve — энергичный, женский ⭐', voice_ara:'Ara — тёплый, женский',
+    voice_rex:'Rex — уверенный, мужской', voice_sal:'Sal — плавный, мужской',
+    voice_leo:'Leo — авторитетный, мужской',
+    ph_voice_instr:'Ты полезный ассистент. Отвечай кратко и по делу.',
+    lbl_export:'Экспорт',
+    history_empty:'История пуста.',
+    confirm_clear_history:'Удалить всю историю чата?',
+    confirm_clear_personal_mem:'Очистить всю личную память?',
   },
   en: {
     tab_chat:'Chat', tab_agent:'Agent', tab_memory:'Memory',
@@ -7618,6 +7632,20 @@ const LANGS = {
     ph_project_name:'Project name...',
     btn_create_project:'➕ Create',
     projects_empty:'No projects. Create the first one!',
+    // v1.7.8 part 3 — EITI files, theme, voices, history exports
+    eiti_btn_new:'＋ New file', eiti_btn_import:'📥 Import', eiti_btn_export_all:'📤 Download all',
+    ph_eiti_search:'🔍 Search files…',
+    eiti_empty:'💾 No files<br><br>Create a new one or import. AI creates files via &lt;EITI_FILE:name.txt&gt;content&lt;/EITI_FILE&gt;',
+    theme_midnight_default:'🌙 Midnight (default)',
+    theme_azure_default:'💎 Azure (default)',
+    voice_eve:'Eve — energetic, female ⭐', voice_ara:'Ara — warm, female',
+    voice_rex:'Rex — confident, male', voice_sal:'Sal — smooth, male',
+    voice_leo:'Leo — authoritative, male',
+    ph_voice_instr:'You are a helpful assistant. Reply briefly and to the point.',
+    lbl_export:'Export',
+    history_empty:'History is empty.',
+    confirm_clear_history:'Delete all chat history?',
+    confirm_clear_personal_mem:'Clear all personal memory?',
   }
 };
 
@@ -7658,6 +7686,8 @@ function applyLang(lang) {
   if (typeof renderProjectsList === 'function' && document.getElementById('projectsList')) { try { renderProjectsList(); } catch(e){} }
   if (typeof loadChatMessages === 'function' && activePanel === 'chat') { try { loadChatMessages(); } catch(e){} }
   if (typeof loadAgentMessages === 'function' && activePanel === 'agent') { try { loadAgentMessages(); } catch(e){} }
+  if (typeof eitiFilesRender === 'function' && document.getElementById('eitiFilesList')) { try { eitiFilesRender(document.getElementById('eitiFilesSearch')?.value||''); } catch(e){} }
+  if (typeof loadHistory === 'function' && document.getElementById('panel-history')) { try { loadHistory(); } catch(e){} }
   if (db) dbPut('config', { id: 'lang', key: 'lang', value: lang });
 }
 
@@ -7849,7 +7879,7 @@ if (toggleAutoMemory) {
 }
 
 document.getElementById('clearPersonalMemory')?.addEventListener('click', () => {
-  if (confirm('Очистить всю личную память?')) {
+  if (confirm((LANGS[currentLang]||LANGS.ru)?.confirm_clear_personal_mem || 'Очистить всю личную память?')) {
     localStorage.removeItem(PERSONAL_MEMORY_KEY);
     showToast('🧠 Личная память очищена');
   }
@@ -9638,7 +9668,7 @@ function eitiFilesRender(filter) {
   }
   files.sort((a,b) => (b.updated||0)-(a.updated||0));
   if (!files.length) {
-    list.innerHTML = '<div style="opacity:.4;text-align:center;padding:40px;font-size:.9rem">💾 Нет файлов<br><br>Создай новый или импортируй. AI создаёт файлы через команду &lt;EITI_FILE:name.txt&gt;содержимое&lt;/EITI_FILE&gt;</div>';
+    list.innerHTML = '<div style="opacity:.4;text-align:center;padding:40px;font-size:.9rem">' + ((LANGS[currentLang]||LANGS.ru)?.eiti_empty || '💾 Нет файлов<br><br>Создай новый или импортируй. AI создаёт файлы через команду &lt;EITI_FILE:name.txt&gt;содержимое&lt;/EITI_FILE&gt;') + '</div>';
     return;
   }
   list.innerHTML = files.map(f => {
