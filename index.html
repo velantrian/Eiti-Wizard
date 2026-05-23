@@ -2276,6 +2276,75 @@ main {
           <button onclick="if(confirm(LANGS[currentLang].confirm_clear_eiti_mem||'Удалить ВСЮ EITI Memory?')){eitiMemClearAll();}" class="btn-small btn-danger" data-i18n="btn_clear_all_memory" style="width:100%;margin-top:8px">🗑 Очистить всю память</button>
         </div>
 
+        <!-- ═══ Фрактальная память — управление слоями L0/L1/L2/L3 ═══ -->
+        <div class="card" id="fractal-memory-card">
+          <div class="card-title">🧬 Фрактальная память</div>
+          <p style="font-size:.8rem;color:var(--text-dim);line-height:1.5;margin-bottom:10px">
+            Четыре слоя памяти: <b>L0</b> — последние сообщения текущего чата,
+            <b>L1</b> — сжатие старой части сессии, <b>L2</b> — дайджесты прошлых сессий,
+            <b>L3</b> — авто-факты о тебе. Каждый можно отключить или настроить.
+          </p>
+          <p style="font-size:.75rem;color:var(--text-dim);line-height:1.4;margin-bottom:10px;opacity:.8">
+            ⚠️ L1 и L2 расходуют API-токены (LLM-сжатие). Master-выключатель — тумблер «EITI Memory» выше.
+          </p>
+
+          <!-- L0 -->
+          <details open style="margin-bottom:8px;border:1px solid var(--gold-dim);border-radius:10px;padding:8px 10px;background:var(--card-bg)">
+            <summary style="cursor:pointer;font-weight:700;font-size:.9rem">📥 L0 — Контекст чата <span id="fm-l0-status" style="font-size:.75rem;color:var(--text-dim);font-weight:400">вкл</span></summary>
+            <div style="margin-top:8px;display:flex;flex-direction:column;gap:8px;font-size:.82rem">
+              <label style="display:flex;align-items:center;justify-content:space-between"><span>Включён</span><input type="checkbox" id="fm-l0-enabled" style="width:18px;height:18px;accent-color:var(--gold)"></label>
+              <label>Глубина (последних сообщений): <b id="fm-l0-depth-val">10</b><input type="range" id="fm-l0-depth" min="0" max="50" step="1" style="width:100%"></label>
+              <label>Макс. символов на сообщение: <b id="fm-l0-slice-val">400</b><input type="range" id="fm-l0-slice" min="100" max="2000" step="50" style="width:100%"></label>
+              <div style="display:flex;gap:6px"><button onclick="fmShowData('l0')" class="btn-small" style="flex:1">👁 Просмотр</button></div>
+            </div>
+          </details>
+
+          <!-- L1 -->
+          <details style="margin-bottom:8px;border:1px solid var(--gold-dim);border-radius:10px;padding:8px 10px;background:var(--card-bg)">
+            <summary style="cursor:pointer;font-weight:700;font-size:.9rem">🗜 L1 — Сжатие сессии <span id="fm-l1-status" style="font-size:.75rem;color:var(--text-dim);font-weight:400">выкл</span></summary>
+            <div style="margin-top:8px;display:flex;flex-direction:column;gap:8px;font-size:.82rem">
+              <label style="display:flex;align-items:center;justify-content:space-between"><span>Включён (требует API)</span><input type="checkbox" id="fm-l1-enabled" style="width:18px;height:18px;accent-color:var(--gold)"></label>
+              <label>Порог сжатия (сообщений): <b id="fm-l1-depth-val">30</b><input type="range" id="fm-l1-depth" min="10" max="100" step="5" style="width:100%"></label>
+              <label>Период пересжатия (сообщ.): <b id="fm-l1-period-val">20</b><input type="range" id="fm-l1-period" min="5" max="50" step="1" style="width:100%"></label>
+              <label>Оставить недавних (хвост): <b id="fm-l1-recent-val">10</b><input type="range" id="fm-l1-recent" min="3" max="40" step="1" style="width:100%"></label>
+              <label>Макс. размер дайджеста (симв.): <b id="fm-l1-slice-val">1500</b><input type="range" id="fm-l1-slice" min="300" max="4000" step="100" style="width:100%"></label>
+              <div style="display:flex;gap:6px">
+                <button onclick="fmShowData('l1')" class="btn-small" style="flex:1">👁 Просмотр</button>
+                <button onclick="fmClearLayer('l1')" class="btn-small btn-danger" style="flex:1">🗑 Очистить</button>
+              </div>
+            </div>
+          </details>
+
+          <!-- L2 -->
+          <details style="margin-bottom:8px;border:1px solid var(--gold-dim);border-radius:10px;padding:8px 10px;background:var(--card-bg)">
+            <summary style="cursor:pointer;font-weight:700;font-size:.9rem">📚 L2 — Дайджесты сессий <span id="fm-l2-status" style="font-size:.75rem;color:var(--text-dim);font-weight:400">вкл</span></summary>
+            <div style="margin-top:8px;display:flex;flex-direction:column;gap:8px;font-size:.82rem">
+              <label style="display:flex;align-items:center;justify-content:space-between"><span>Включён (требует API)</span><input type="checkbox" id="fm-l2-enabled" style="width:18px;height:18px;accent-color:var(--gold)"></label>
+              <label>Дайджестов в инжекте: <b id="fm-l2-depth-val">5</b><input type="range" id="fm-l2-depth" min="0" max="20" step="1" style="width:100%"></label>
+              <label>Период консолидации (сообщ.): <b id="fm-l2-period-val">10</b><input type="range" id="fm-l2-period" min="3" max="50" step="1" style="width:100%"></label>
+              <label>Макс. символов на дайджест: <b id="fm-l2-slice-val">300</b><input type="range" id="fm-l2-slice" min="100" max="1500" step="50" style="width:100%"></label>
+              <div style="display:flex;gap:6px">
+                <button onclick="fmShowData('l2')" class="btn-small" style="flex:1">👁 Просмотр</button>
+                <button onclick="fmClearLayer('l2')" class="btn-small btn-danger" style="flex:1">🗑 Очистить</button>
+              </div>
+            </div>
+          </details>
+
+          <!-- L3 -->
+          <details style="margin-bottom:8px;border:1px solid var(--gold-dim);border-radius:10px;padding:8px 10px;background:var(--card-bg)">
+            <summary style="cursor:pointer;font-weight:700;font-size:.9rem">🧬 L3 — Авто-факты <span id="fm-l3-status" style="font-size:.75rem;color:var(--text-dim);font-weight:400">вкл</span></summary>
+            <div style="margin-top:8px;display:flex;flex-direction:column;gap:8px;font-size:.82rem">
+              <label style="display:flex;align-items:center;justify-content:space-between"><span>Включён (regex, без API)</span><input type="checkbox" id="fm-l3-enabled" style="width:18px;height:18px;accent-color:var(--gold)"></label>
+              <label>Фактов в инжекте: <b id="fm-l3-depth-val">15</b><input type="range" id="fm-l3-depth" min="0" max="50" step="1" style="width:100%"></label>
+              <label>Макс. символов на факт: <b id="fm-l3-slice-val">200</b><input type="range" id="fm-l3-slice" min="50" max="500" step="10" style="width:100%"></label>
+              <div style="display:flex;gap:6px">
+                <button onclick="fmShowData('l3')" class="btn-small" style="flex:1">👁 Просмотр</button>
+                <button onclick="fmClearLayer('l3')" class="btn-small btn-danger" style="flex:1">🗑 Очистить</button>
+              </div>
+            </div>
+          </details>
+        </div>
+
         <!-- ═══ Персональная Доска (как в Velantrim) ═══ -->
         <div class="card" id="eiti-board-card">
           <div class="card-title" data-i18n="card_personal_board">📋 Персональная Доска</div>
@@ -2716,14 +2785,20 @@ async function createNewChat() {
 // Загрузка селектора чатов
 async function loadChatSelector() {
   if (!db) return;
-  const chats = await dbGetAll('chats');
+  let chats = await dbGetAll('chats');
   const selector = document.getElementById('chatSelector');
   const chatHeader = document.querySelector('#panel-chat .chat-header');
   selector.innerHTML = '';
 
+  // Если чатов нет — создаём дефолтный, чтобы activeChatId никогда не был null
   if (!chats.length) {
-    if (chatHeader) chatHeader.style.display = 'none';
-    return;
+    const defaultId = 'chat_' + Date.now();
+    const defaultChat = { id: defaultId, title: 'Чат', created: Date.now(), updated: Date.now() };
+    try { await dbAdd('chats', defaultChat); } catch(e) { console.warn('default chat add:', e); }
+    chats = [defaultChat];
+    activeChatId = defaultId;
+    // Подцепляем осиротевшие сообщения (chatId=null или указывают на удалённый чат)
+    await adoptOrphanMessages('chat', defaultId);
   }
 
   if (chatHeader) chatHeader.style.display = '';
@@ -2740,7 +2815,34 @@ async function loadChatSelector() {
 
   if (!activeChatId && chats.length) {
     activeChatId = chats[0].id;
-    await loadChatMessages();
+  }
+  await loadChatMessages();
+}
+
+// Привязывает сообщения без валидного chatId к указанному чату/агенту
+async function adoptOrphanMessages(panel, targetId) {
+  if (!db || !targetId) return;
+  try {
+    const [allMessages, allChats, allAgents] = await Promise.all([
+      dbGetAll('messages'),
+      dbGetAll('chats').catch(() => []),
+      dbGetAll('agents').catch(() => []),
+    ]);
+    const validChatIds = new Set((allChats || []).map(c => c.id));
+    const validAgentIds = new Set((allAgents || []).map(a => a.id));
+    const orphans = allMessages.filter(m => {
+      if (m.panel && m.panel !== panel) return false;
+      if (!m.chatId) return true;
+      if (panel === 'chat'  && !validChatIds.has(m.chatId))  return true;
+      if (panel === 'agent' && !validAgentIds.has(m.chatId)) return true;
+      return false;
+    });
+    if (!orphans.length) return;
+    const tx = db.transaction('messages', 'readwrite');
+    const store = tx.objectStore('messages');
+    orphans.forEach(m => { m.chatId = targetId; m.panel = panel; store.put(m); });
+  } catch(e) {
+    console.warn('adoptOrphanMessages:', e);
   }
 }
 
@@ -2818,14 +2920,19 @@ async function createNewAgent() {
 // Загрузка селектора агентов
 async function loadAgentSelector() {
   if (!db) return;
-  const agents = await dbGetAll('agents');
+  let agents = await dbGetAll('agents');
   const selector = document.getElementById('agentSelector');
   const agentHeader = document.querySelector('#panel-agent .chat-header');
   selector.innerHTML = '';
 
+  // Если агентов нет — создаём дефолтного, чтобы activeAgentId никогда не был null
   if (!agents.length) {
-    if (agentHeader) agentHeader.style.display = 'none';
-    return;
+    const defaultId = 'agent_' + Date.now();
+    const defaultAgent = { id: defaultId, title: 'Агент', created: Date.now(), updated: Date.now() };
+    try { await dbAdd('agents', defaultAgent); } catch(e) { console.warn('default agent add:', e); }
+    agents = [defaultAgent];
+    activeAgentId = defaultId;
+    await adoptOrphanMessages('agent', defaultId);
   }
 
   if (agentHeader) agentHeader.style.display = '';
@@ -2842,8 +2949,8 @@ async function loadAgentSelector() {
 
   if (!activeAgentId && agents.length) {
     activeAgentId = agents[0].id;
-    await loadAgentMessages();
   }
+  await loadAgentMessages();
 }
 
 // Загрузка сообщений текущего агента
@@ -4798,9 +4905,29 @@ async function sendMessage(inputEl, historyEl) {
     wizRenderFileChips();
   }
   
-  // Определяем chatId в зависимости от панели
-  const currentChatId = activePanel === 'chat' ? activeChatId : activeAgentId;
-  if (db) dbPut('messages', { role: 'user', content: text, ts: Date.now(), panel: activePanel, chatId: currentChatId });
+  // Определяем chatId в зависимости от панели.
+  // Страховка: если по какой-то причине нет активного чата/агента — создаём на лету,
+  // чтобы сообщение не сохранилось с chatId=null и не потерялось после перезагрузки.
+  let currentChatId = activePanel === 'chat' ? activeChatId : activeAgentId;
+  if (db && !currentChatId) {
+    try {
+      if (activePanel === 'chat') {
+        const id = 'chat_' + Date.now();
+        await dbAdd('chats', { id, title: 'Чат', created: Date.now(), updated: Date.now() });
+        activeChatId = id; currentChatId = id;
+        await loadChatSelector();
+      } else {
+        const id = 'agent_' + Date.now();
+        await dbAdd('agents', { id, title: 'Агент', created: Date.now(), updated: Date.now() });
+        activeAgentId = id; currentChatId = id;
+        await loadAgentSelector();
+      }
+    } catch(e) { console.warn('auto-create chat/agent:', e); }
+  }
+  if (db && currentChatId) {
+    dbPut('messages', { role: 'user', content: text, ts: Date.now(), panel: activePanel, chatId: currentChatId })
+      .catch(err => console.warn('save user msg:', err));
+  }
 
   // v1.7.8: отдельный провайдер/модель для агента если включено
   const _agSameAsChat = document.getElementById('cfgAgentSameAsChat')?.checked !== false;
@@ -4958,12 +5085,24 @@ AI провайдеры: Ollama (офлайн, localhost:11434), Claude, OpenAI,
     const eitiMemCtx = getEitiMemoryContext();
     if (eitiMemCtx) messageWithFiles += eitiMemCtx;
   }
+  // ── L0: последние N сообщений текущего чата ────────────────────────
+  if (typeof getL0Context === 'function') {
+    try { const c = await getL0Context(); if (c) messageWithFiles += c; } catch(e) {}
+  }
+  // ── L1: сжатый дайджест ранней части сессии ────────────────────────
+  if (typeof getL1Context === 'function') {
+    try { const c = getL1Context(); if (c) messageWithFiles += c; } catch(e) {}
+  }
   // ── L2: дайджесты прошлых сессий ──────────────────────────────────
   if (typeof getL2Context === 'function') {
     try {
       const l2Ctx = await getL2Context();
       if (l2Ctx) messageWithFiles += l2Ctx;
     } catch(e) {}
+  }
+  // ── L3: авто-факты о пользователе ─────────────────────────────────
+  if (typeof getL3Context === 'function') {
+    try { const c = await getL3Context(); if (c) messageWithFiles += c; } catch(e) {}
   }
 
   // L3: авто-извлечь личные факты из текста пользователя
@@ -5388,6 +5527,7 @@ Connect any AI provider in settings! I'll become a powerful productivity tool.`;
           autoExtractFacts(fullReply);
           // L2: сохраняем дайджест сессии (async, в фоне)
           if (currentChatId && typeof l2Consolidate === 'function') setTimeout(() => l2Consolidate(currentChatId), 3000);
+          if (currentChatId && typeof l1Compress === 'function') setTimeout(() => l1Compress(currentChatId), 4500);
           if (getProjects().length && fullReply.length > 80 && Math.random() < 0.3) {
             setTimeout(() => suggestProjectSave(fullReply.slice(0, 200)), 1200);
           }
@@ -9167,6 +9307,7 @@ function eitiInitMemoryAndBoard() {
   // Pre-load cache
   eitiMemLoadAsync().then(eitiMemRefreshUI);
   eitiBoardRefreshStats();
+  if (typeof fractalMemoryInit === 'function') fractalMemoryInit();
 }
 
 
@@ -9186,6 +9327,7 @@ const _l3Patterns = [
 
 function l3AutoExtract(userText) {
   if (!userText || userText.length < 5 || !eitiMemEnabled()) return;
+  if (typeof fmEnabled === 'function' && !fmEnabled('l3')) return;
   _l3Patterns.forEach(p => {
     const m = userText.match(p.re);
     if (m && m[1] && m[1].trim().length >= 2) {
@@ -9244,17 +9386,24 @@ function l2SaveDigest(chatId, title, digestText) {
   });
 }
 
-// Auto-consolidate chat after 5+ messages (async background call)
+// Auto-consolidate chat after N messages (period настраивается в Фрактальной памяти)
 function l2Consolidate(chatId) {
   if (!chatId || !db) return;
+  if (typeof fmEnabled === 'function' && !fmEnabled('l2')) return;
   const provider = document.getElementById('cfgProvider')?.value;
   const model = document.getElementById('cfgModel')?.value;
-  const apiKey = sessionStorage.getItem('cfgApiKey');
+  const apiKey = sessionStorage.getItem('cfgApiKey_' + provider) || sessionStorage.getItem('cfgApiKey');
   if (!apiKey || !provider || provider === 'ollama') return;
 
   dbGetAll('messages').then(allMsgs => {
     const chatMsgs = allMsgs.filter(m => m.chatId === chatId && m.panel === 'chat').sort((a,b)=>(a.ts||0)-(b.ts||0));
-    if (chatMsgs.length < 5) return; // Need at least 5 messages
+    const period = (typeof fmCfg === 'function') ? fmCfg('l2', 'period') : 10;
+    if (chatMsgs.length < period) return;
+    // Throttle: пересжимаем только раз в period сообщений
+    const atKey = 'wiz_l2_at_' + chatId;
+    const lastN = Number(localStorage.getItem(atKey) || 0);
+    if (chatMsgs.length - lastN < period && lastN > 0) return;
+    localStorage.setItem(atKey, String(chatMsgs.length));
 
     const sliceText = chatMsgs.slice(-20).map(m =>
       (m.role === 'user' ? 'Пользователь' : 'AI') + ': ' + (m.content||'').slice(0, 300)
@@ -9298,15 +9447,219 @@ function l2Consolidate(chatId) {
 
 // Build L2 context for system prompt
 function getL2Context() {
-  if (!eitiMemEnabled()) return Promise.resolve('');
+  if (!eitiMemEnabled() || !fmEnabled('l2')) return Promise.resolve('');
   return l2GetDigests().then(digests => {
     if (!digests.length) return '';
-    // Sort by newest
-    const recent = digests.sort((a,b)=>(b.created||0)-(a.created||0)).slice(0,5);
+    const depth = fmCfg('l2', 'depth');
+    const limit = fmCfg('l2', 'slice');
+    const recent = digests.sort((a,b)=>(b.created||0)-(a.created||0)).slice(0, depth);
     let s = '\n\n=== ПАМЯТЬ ПРОШЛЫХ СЕССИЙ (L2) ===';
-    recent.forEach(d => { s += '\n• ' + d.text.slice(0, 300); });
+    recent.forEach(d => { s += '\n• ' + d.text.slice(0, limit); });
     s += '\n=== КОНЕЦ L2 ===';
     return s;
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 🧬 ФРАКТАЛЬНАЯ ПАМЯТЬ — управление L0/L1/L2/L3 (settings + L0/L1 logic)
+// ═══════════════════════════════════════════════════════════════════════════
+const FRACTAL_DEFAULTS = {
+  l0: { enabled: true,  depth: 10, slice: 400 },                     // depth = последних N сообщений, slice = max символов на сообщение
+  l1: { enabled: false, depth: 30, period: 20, recent: 10, slice: 1500 }, // depth = сжимать когда >N; recent = оставить хвост; period = каждые N сообщений переcжимать; slice = max размер дайджеста
+  l2: { enabled: true,  depth: 5,  period: 10, slice: 300 },         // depth = max дайджестов в инжекте; period = каждые N сообщений консолидировать
+  l3: { enabled: true,  depth: 15, slice: 200 },                     // depth = max фактов в инжекте
+};
+
+function fmKey(layer, key) { return 'wiz_mem_' + layer + '_' + key; }
+function fmCfg(layer, key) {
+  const raw = localStorage.getItem(fmKey(layer, key));
+  const def = FRACTAL_DEFAULTS[layer]?.[key];
+  if (raw === null) return def;
+  if (key === 'enabled') return raw === 'true';
+  const n = Number(raw);
+  return Number.isFinite(n) ? n : def;
+}
+function fmCfgSet(layer, key, val) {
+  localStorage.setItem(fmKey(layer, key), String(val));
+}
+function fmEnabled(layer) {
+  return eitiMemEnabled() && fmCfg(layer, 'enabled');
+}
+
+// ── L0: последние N сообщений текущего чата в системный промпт ─────────────
+async function getL0Context() {
+  if (!fmEnabled('l0') || !db) return '';
+  const targetId = activePanel === 'chat' ? activeChatId : activeAgentId;
+  if (!targetId) return '';
+  try {
+    const allMessages = await dbGetAll('messages');
+    const chatMsgs = allMessages
+      .filter(m => m.chatId === targetId && m.panel === activePanel)
+      .sort((a,b)=>(a.ts||0)-(b.ts||0));
+    if (!chatMsgs.length) return '';
+    const depth = fmCfg('l0', 'depth');
+    const slice = fmCfg('l0', 'slice');
+    // Исключаем последний user-msg (он и так уйдёт текущим запросом)
+    const tail = chatMsgs.slice(-depth - 1, -1);
+    if (!tail.length) return '';
+    const text = tail.map(m => (m.role==='user' ? 'Пользователь' : 'AI') + ': ' + (m.content||'').slice(0, slice)).join('\n');
+    return '\n\n=== КОНТЕКСТ ТЕКУЩЕГО ЧАТА (L0) ===\n' + text + '\n=== КОНЕЦ L0 ===';
+  } catch(e) { console.warn('L0 ctx:', e); return ''; }
+}
+
+// ── L1: LLM-сжатие старой части текущей сессии ─────────────────────────────
+function fmL1Key(chatId) { return 'wiz_l1_sum_' + chatId; }
+function getL1Context() {
+  if (!fmEnabled('l1')) return '';
+  const id = activePanel === 'chat' ? activeChatId : activeAgentId;
+  if (!id) return '';
+  const sum = localStorage.getItem(fmL1Key(id));
+  if (!sum) return '';
+  return '\n\n=== СЖАТЫЙ КОНТЕКСТ РАННЕЙ ЧАСТИ СЕССИИ (L1) ===\n' + sum + '\n=== КОНЕЦ L1 ===';
+}
+async function l1Compress(chatId) {
+  if (!fmEnabled('l1') || !chatId || !db) return;
+  const provider = document.getElementById('cfgProvider')?.value;
+  const model    = document.getElementById('cfgModel')?.value;
+  const apiKey   = sessionStorage.getItem('cfgApiKey_' + provider) || sessionStorage.getItem('cfgApiKey');
+  if (!apiKey || !provider || provider === 'ollama') return;
+  try {
+    const allMsgs = await dbGetAll('messages');
+    const chatMsgs = allMsgs.filter(m => m.chatId === chatId && m.panel === 'chat').sort((a,b)=>(a.ts||0)-(b.ts||0));
+    const threshold = fmCfg('l1', 'depth');
+    const keep = fmCfg('l1', 'recent');
+    const period = fmCfg('l1', 'period');
+    if (chatMsgs.length < threshold) return;
+    // Не пережимаем чаще, чем раз в period сообщений
+    const lastN = Number(localStorage.getItem(fmL1Key(chatId) + '_at') || 0);
+    if (chatMsgs.length - lastN < period && lastN > 0) return;
+    const toCompress = chatMsgs.slice(0, Math.max(0, chatMsgs.length - keep));
+    if (toCompress.length < 5) return;
+    const sliceText = toCompress.map(m => (m.role==='user'?'Пользователь':'AI')+': '+(m.content||'').slice(0,300)).join('\n');
+    const sysPrompt = 'Сожми диалог в краткое резюме (5-8 предложений). Сохрани суть, ключевые факты, решения, незавершённые темы. Только суть, без воды.';
+    let url, headers, body;
+    if (provider === 'gemini') {
+      url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+      headers = {'Content-Type':'application/json'};
+      body = {contents:[{role:'user',parts:[{text: sysPrompt + '\n\nДиалог:\n' + sliceText}]}], generationConfig:{maxOutputTokens: 400, temperature: 0.2}};
+    } else {
+      url = provider === 'deepseek' ? 'https://api.deepseek.com/v1/chat/completions'
+          : provider === 'openai' ? 'https://api.openai.com/v1/chat/completions'
+          : provider === 'groq' ? 'https://api.groq.com/openai/v1/chat/completions'
+          : provider === 'openrouter' ? 'https://openrouter.ai/api/v1/chat/completions'
+          : null;
+      if (!url) return;
+      const realModel = model.replace('-high','').replace('-xhigh','');
+      headers = {'Content-Type':'application/json','Authorization':'Bearer '+apiKey};
+      body = {model:realModel, messages:[{role:'system',content:sysPrompt},{role:'user',content:sliceText}], max_tokens:400, temperature:0.2};
+    }
+    const r = await fetch(url, { method:'POST', headers, body: JSON.stringify(body) });
+    const d = await r.json();
+    let text = provider === 'gemini'
+      ? (d.candidates?.[0]?.content?.parts?.[0]?.text || '')
+      : (d.choices?.[0]?.message?.content || '');
+    if (text && text.length > 10) {
+      const maxLen = fmCfg('l1', 'slice');
+      localStorage.setItem(fmL1Key(chatId), text.slice(0, maxLen));
+      localStorage.setItem(fmL1Key(chatId) + '_at', String(chatMsgs.length));
+      if (typeof showToast === 'function') showToast('🗜 L1: контекст сжат', 1800);
+    }
+  } catch(e) { console.warn('L1 compress:', e); }
+}
+
+// ── L3: инжект только последних N авто-фактов (отдельно от EITI Memory) ────
+function getL3Context() {
+  if (!fmEnabled('l3')) return Promise.resolve('');
+  return eitiMemLoadAsync().then(all => {
+    const l3 = (all || []).filter(e => e.tag === 'l3_auto').sort((a,b)=>(b.created||0)-(a.created||0));
+    if (!l3.length) return '';
+    const depth = fmCfg('l3', 'depth');
+    const slice = fmCfg('l3', 'slice');
+    const sel = l3.slice(0, depth);
+    let s = '\n\n=== ФАКТЫ О ПОЛЬЗОВАТЕЛЕ (L3) ===';
+    sel.forEach(e => { s += '\n• ' + (e.text||'').slice(0, slice); });
+    s += '\n=== КОНЕЦ L3 ===';
+    return s;
+  });
+}
+
+// ── Просмотр данных слоя ────────────────────────────────────────────────────
+async function fmShowData(layer) {
+  let body = '';
+  const targetId = activePanel === 'chat' ? activeChatId : activeAgentId;
+  if (layer === 'l0') {
+    if (!db || !targetId) { body = '(нет активного чата)'; }
+    else {
+      const all = await dbGetAll('messages');
+      const chatMsgs = all.filter(m => m.chatId === targetId && m.panel === activePanel).sort((a,b)=>(a.ts||0)-(b.ts||0));
+      const depth = fmCfg('l0', 'depth');
+      const tail = chatMsgs.slice(-depth);
+      body = tail.length
+        ? tail.map(m => '— ' + (m.role==='user'?'Я':'AI') + ': ' + (m.content||'').slice(0, 200)).join('\n')
+        : '(пусто)';
+    }
+  } else if (layer === 'l1') {
+    if (!targetId) { body = '(нет активного чата)'; }
+    else {
+      const sum = localStorage.getItem(fmL1Key(targetId));
+      body = sum || '(дайджест ещё не создан)';
+    }
+  } else if (layer === 'l2') {
+    const digests = await l2GetDigests();
+    body = digests.length
+      ? digests.sort((a,b)=>(b.created||0)-(a.created||0)).slice(0, 20).map(d => '• ' + (d.text||'')).join('\n\n')
+      : '(пусто)';
+  } else if (layer === 'l3') {
+    const all = await eitiMemLoadAsync();
+    const l3 = (all || []).filter(e => e.tag === 'l3_auto').sort((a,b)=>(b.created||0)-(a.created||0));
+    body = l3.length ? l3.map(e => '• ' + (e.text||'')).join('\n') : '(пусто)';
+  }
+  alert('🧬 ' + layer.toUpperCase() + ' — содержимое:\n\n' + body);
+}
+
+async function fmClearLayer(layer) {
+  if (!confirm('Очистить данные слоя ' + layer.toUpperCase() + '?')) return;
+  if (layer === 'l1') {
+    Object.keys(localStorage).filter(k => k.startsWith('wiz_l1_sum_')).forEach(k => localStorage.removeItem(k));
+  } else if (layer === 'l2') {
+    const digs = await l2GetDigests();
+    for (const d of digs) { try { await eitiMemDeleteEntry(d.id); } catch(e){} }
+    _eitiMemCache = null;
+  } else if (layer === 'l3') {
+    const all = await eitiMemLoadAsync();
+    const l3 = (all || []).filter(e => e.tag === 'l3_auto');
+    for (const e of l3) { try { await eitiMemDeleteEntry(e.id); } catch(err){} }
+    _eitiMemCache = null;
+  }
+  if (typeof showToast === 'function') showToast('🗑 ' + layer.toUpperCase() + ' очищен', 1500);
+}
+
+// ── UI: инициализация регуляторов слоёв ─────────────────────────────────────
+function fractalMemoryInit() {
+  ['l0','l1','l2','l3'].forEach(layer => {
+    Object.keys(FRACTAL_DEFAULTS[layer]).forEach(key => {
+      const el = document.getElementById('fm-' + layer + '-' + key);
+      if (!el) return;
+      const cur = fmCfg(layer, key);
+      if (key === 'enabled') {
+        el.checked = !!cur;
+        el.onchange = () => {
+          fmCfgSet(layer, 'enabled', el.checked);
+          const status = document.getElementById('fm-' + layer + '-status');
+          if (status) status.textContent = el.checked ? 'вкл' : 'выкл';
+        };
+        const status = document.getElementById('fm-' + layer + '-status');
+        if (status) status.textContent = cur ? 'вкл' : 'выкл';
+      } else {
+        el.value = cur;
+        const lbl = document.getElementById('fm-' + layer + '-' + key + '-val');
+        if (lbl) lbl.textContent = cur;
+        el.oninput = () => {
+          fmCfgSet(layer, key, el.value);
+          if (lbl) lbl.textContent = el.value;
+        };
+      }
+    });
   });
 }
 
