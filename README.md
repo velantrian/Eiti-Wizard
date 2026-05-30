@@ -2,6 +2,9 @@
 
 🚀 Progressive Web App для работы с AI чатами, агентами и файлами в офлайн-режиме через Ollama и внешние модели
 
+🌐 **Открыть приложение:** https://velantrian.github.io/Eiti-Wizard/
+📲 Откройте ссылку в браузере и нажмите «Установить» (или «Добавить на главный экран») — приложение поставится как PWA и будет работать офлайн.
+
 
 ---
 
@@ -242,9 +245,29 @@ Phase 5 — Экосистема
 
 ---
 
-🛠 Установка
+🛠 Установка и запуск
 
-git clone https://velantrian.github.io/Eiti-Wizard/
+**Вариант 1 — просто открыть (рекомендуется):**
+Перейдите по ссылке https://velantrian.github.io/Eiti-Wizard/ и установите как приложение.
+
+**Вариант 2 — запустить локально:**
+
+```bash
+# 1. Клонировать репозиторий (это git-URL, а не ссылка на сайт)
+git clone https://github.com/velantrian/Eiti-Wizard.git
+cd Eiti-Wizard
+
+# 2. Поднять статический сервер (Service Worker требует http://, а не file://)
+python3 -m http.server 8080
+#   или: npx serve -l 8080 .
+
+# 3. Открыть в браузере
+#   http://localhost:8080/index.html
+```
+
+> 💡 Для офлайн-чата запустите локально [Ollama](https://ollama.com) (`localhost:11434`)
+> либо подключите облачный провайдер (OpenAI / Claude / DeepSeek / Groq / OpenRouter)
+> в ⚙️ Настройках — ключи хранятся локально в IndexedDB.
 
 
 ---
