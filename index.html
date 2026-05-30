@@ -2669,11 +2669,16 @@ function dbGetAll(store) {
 }
 
 // ── Service Worker registration ──────────────────────────────────────────
-// SW только при локальном сервере (не при открытии как файл и не на claude.ai)
+// SW нужен для установки PWA (иконка на домашний экран) — регистрируем на HTTPS
+// и локально. Исключаем только file:// и превью-песочницы (claude.ai и т.п.),
+// где SW либо запрещён, либо ломает окружение.
 if ('serviceWorker' in navigator) {
-  const _swOrigin = location.origin;
-  const _isLocal = _swOrigin.includes('localhost') || _swOrigin.includes('127.0.0') || _swOrigin.includes('192.168.');
-  if (_isLocal) {
+  const _host = location.hostname;
+  const _isFile = location.protocol === 'file:';
+  const _isPreviewSandbox = /(^|\.)claude\.ai$|claudeusercontent\.com|webcontainer|stackblitz|csb\.app/i.test(_host);
+  const _isLocalHost = _host === 'localhost' || _host === '127.0.0.1' || _host.startsWith('192.168.');
+  const _canRegisterSW = !_isFile && !_isPreviewSandbox && (location.protocol === 'https:' || _isLocalHost);
+  if (_canRegisterSW) {
     // Unregister old caches on version bump (uses global APP_VERSION)
     if (localStorage.getItem('wiz_app_version') !== APP_VERSION) {
       navigator.serviceWorker.getRegistrations().then(regs => regs.forEach(r => r.unregister()));
