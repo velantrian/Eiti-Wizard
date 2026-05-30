@@ -1360,6 +1360,7 @@ main {
     <button class="mode-tab" data-panel="notes"><span class="tab-icon">📝</span><span class="tab-label" data-i18n="tab_notes">Заметки</span></button>
     <button class="mode-tab" data-panel="files"><span class="tab-icon">📁</span><span class="tab-label" data-i18n="tab_files">Файлы</span></button>
     <button class="mode-tab" data-panel="eiti-files"><span class="tab-icon">💾</span><span class="tab-label" data-i18n="tab_eiti_files">EITI Файлы</span></button>
+    <button class="mode-tab" data-panel="board"><span class="tab-icon">📋</span><span class="tab-label" data-i18n="tab_board">Доска</span></button>
     <button class="mode-tab" data-panel="diary" id="tab-diary"><span class="tab-icon">📓</span><span class="tab-label" data-i18n="tab_diary">Дневник</span></button>
     <button class="mode-tab" data-panel="settings"><span class="tab-icon">⚙</span><span class="tab-label" data-i18n="tab_settings">Настройки</span></button>
   </nav>
@@ -2524,6 +2525,20 @@ main {
       </div>
     </section>
 
+    <!-- ── Board / Kanban panel (порт из Velantrim: доска как панель) ── -->
+    <section class="panel" id="panel-board">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px 8px;gap:8px;flex-wrap:wrap">
+        <div style="font-size:1.05rem;font-weight:700;color:var(--gold)">📋 Доска задач</div>
+        <div style="display:flex;gap:6px">
+          <button onclick="boardPanelAddPrompt()" class="btn-small" style="background:linear-gradient(145deg,#1a4a8a,#2563eb);color:#fff;border:none">＋ Задача</button>
+          <button onclick="eitiBoardExport()" class="btn-small">📤</button>
+          <button onclick="if(confirm(LANGS[currentLang].confirm_clear_board||'Удалить все задачи?')){eitiBoardClearAll();boardRenderPanel();}" class="btn-small btn-danger">🗑</button>
+        </div>
+      </div>
+      <div id="board-panel-stats" style="font-size:.78rem;color:var(--text-dim);padding:0 16px 8px"></div>
+      <div id="boardColumns" style="display:flex;gap:12px;padding:4px 12px 80px;overflow-x:auto;flex:1;align-items:flex-start"></div>
+    </section>
+
     <!-- ── Diary / RNE panel ───────────────────────────────────────── -->
     <section class="panel" id="panel-diary">
       <div class="rne-header">
@@ -2605,7 +2620,7 @@ const DB_VERSION = 6;
 const STORES     = ['messages', 'config', 'memory', 'agent_backups', 'files', 'chats', 'agents', 'chunks', 'tasks'];
 
 // Единый источник версии приложения (используется в шапке, sys-info, ответах бота)
-const APP_VERSION = '1.8.1';
+const APP_VERSION = '1.8.2';
 document.addEventListener('DOMContentLoaded', () => {
   const _vl = document.getElementById('appVersionLabel');
   if (_vl) _vl.textContent = 'v' + APP_VERSION;
@@ -2810,6 +2825,7 @@ function switchPanel(panel, push = true) {
   if (panel === 'memory') { memPanelLoad(); }
   if (panel === 'notes')  { notesSetLayout(notesGetLayout()); }
   if (panel === 'eiti-files') { eitiFilesRender(''); }
+  if (panel === 'board') { if (typeof boardRenderPanel === 'function') boardRenderPanel(); }
   if (panel === 'history') { if (typeof loadHistory === 'function') loadHistory(); }
   if (panel === 'files') { if (typeof updateStats === 'function') updateStats(); }
   if (panel === 'projects') renderProjectsList();
@@ -8203,7 +8219,7 @@ const LANGS = {
 <p style="color:var(--text-dim);font-size:0.78rem;margin-top:10px;padding-top:10px;border-top:1px solid var(--toggle-border)">💡 ИИ видит эту информацию и может давать советы по улучшению.</p>`,
     memInfoText:`Память о проектах хранится в IndexedDB локально в браузере.<br>Факты проходят через ESM: <strong style="color:var(--gold-dim)">Observed → Validated → Collapsed</strong>.`,
     // v1.7.8 — extra translations
-    tab_notes:'Заметки', tab_projects:'Проекты', tab_eiti_files:'EITI Файлы', tab_diary:'Дневник',
+    tab_notes:'Заметки', tab_projects:'Проекты', tab_eiti_files:'EITI Файлы', tab_board:'Доска', tab_diary:'Дневник',
     ttl_attach:'Прикрепить файл', ttl_clear_chat:'Очистить чат', ttl_clear_field:'Очистить поле ввода',
     ttl_clear_api:'Очистить API ключ', ttl_send:'Отправить', ttl_stop_agent:'Остановить агента',
     ttl_clear_agent:'Очистить агента', ttl_run_agent:'Запустить агента',
@@ -8266,6 +8282,7 @@ const LANGS = {
     mod_memory:'Память', mod_memory_desc:'Умная память: EITI Memory, L2/L3, AI-анализ',
     mod_notes:'Заметки', mod_notes_desc:'Цветные карточки, AI создаёт заметки',
     mod_eiti_files:'EITI Файлы', mod_eiti_files_desc:'Создание и редактирование файлов',
+    mod_board:'Доска', mod_board_desc:'Канбан-доска задач с перетаскиванием',
     mod_projects:'Проекты', mod_projects_desc:'Персональные проекты с контекстом',
     mod_history:'История', mod_history_desc:'Все чаты сгруппированные, поиск',
     mod_files:'Файлы', mod_files_desc:'RAG: PDF, DOCX, TXT для контекста AI',
@@ -8447,7 +8464,7 @@ const LANGS = {
 <p style="color:var(--text-dim);font-size:0.78rem;margin-top:10px;padding-top:10px;border-top:1px solid var(--toggle-border)">💡 AI sees this info and can suggest improvements.</p>`,
     memInfoText:`Project memory is stored in IndexedDB locally in the browser.<br>Facts go through ESM: <strong style="color:var(--gold-dim)">Observed → Validated → Collapsed</strong>.`,
     // v1.7.8 — extra translations
-    tab_notes:'Notes', tab_projects:'Projects', tab_eiti_files:'EITI Files', tab_diary:'Diary',
+    tab_notes:'Notes', tab_projects:'Projects', tab_eiti_files:'EITI Files', tab_board:'Board', tab_diary:'Diary',
     ttl_attach:'Attach file', ttl_clear_chat:'Clear chat', ttl_clear_field:'Clear input',
     ttl_clear_api:'Clear API key', ttl_send:'Send', ttl_stop_agent:'Stop agent',
     ttl_clear_agent:'Clear agent', ttl_run_agent:'Run agent',
@@ -8510,6 +8527,7 @@ const LANGS = {
     mod_memory:'Memory', mod_memory_desc:'Smart memory: EITI Memory, L2/L3, AI analysis',
     mod_notes:'Notes', mod_notes_desc:'Color cards, AI creates notes',
     mod_eiti_files:'EITI Files', mod_eiti_files_desc:'Create and edit files',
+    mod_board:'Board', mod_board_desc:'Kanban task board with drag-and-drop',
     mod_projects:'Projects', mod_projects_desc:'Personal projects with context',
     mod_history:'History', mod_history_desc:'All chats grouped, search',
     mod_files:'Files', mod_files_desc:'RAG: PDF, DOCX, TXT for AI context',
@@ -9543,6 +9561,7 @@ var TAB_DEFS = [
   { panel:'memory',     icon:'🧠', labelKey:'mod_memory',     descKey:'mod_memory_desc',     required:false },
   { panel:'notes',      icon:'📝', labelKey:'mod_notes',      descKey:'mod_notes_desc',      required:false },
   { panel:'eiti-files', icon:'💾', labelKey:'mod_eiti_files', descKey:'mod_eiti_files_desc', required:false },
+  { panel:'board',      icon:'📋', labelKey:'mod_board',      descKey:'mod_board_desc',      required:false },
   { panel:'projects',   icon:'🧰', labelKey:'mod_projects',   descKey:'mod_projects_desc',   required:false },
   { panel:'history',    icon:'📜', labelKey:'mod_history',    descKey:'mod_history_desc',    required:false },
   { panel:'files',      icon:'📁', labelKey:'mod_files',      descKey:'mod_files_desc',      required:false },
@@ -10118,6 +10137,8 @@ function eitiBoardRefreshStats() {
     all.forEach(t => { counts[t.status||'To Do'] = (counts[t.status||'To Do']||0)+1; });
     el.innerHTML = `<b>${all.length}</b> задач · 📥 ${counts['To Do']} · 🔄 ${counts['In Progress']} · ✅ ${counts['Done']} · 🚧 ${counts['Blocked']}`;
   });
+  // если панель доски открыта — обновим и её (напр. после команд AI)
+  if (activePanel === 'board' && typeof boardRenderPanel === 'function') boardRenderPanel();
 }
 
 function showEitiBoard() {
@@ -10166,6 +10187,76 @@ function showEitiBoard() {
       ${html}
     </div>`;
   });
+}
+
+// ── Доска как панель (Kanban в panel-board) с drag-and-drop ──────────
+const BOARD_PANEL_COLUMNS = [
+  { id:'To Do',       label:'📥 К выполнению' },
+  { id:'In Progress', label:'🔄 В работе' },
+  { id:'Done',        label:'✅ Готово' },
+  { id:'Blocked',     label:'🚧 Заблокировано' }
+];
+
+function boardRenderPanel() {
+  const wrap = document.getElementById('boardColumns');
+  if (!wrap) return;
+  eitiBoardLoadAsync().then(all => {
+    const byStatus = {};
+    BOARD_PANEL_COLUMNS.forEach(c => byStatus[c.id] = []);
+    all.forEach(t => { const s = t.status || 'To Do'; (byStatus[s] = byStatus[s] || []).push(t); });
+
+    wrap.innerHTML = '';
+    BOARD_PANEL_COLUMNS.forEach(col => {
+      const tasks = byStatus[col.id] || [];
+      const colEl = document.createElement('div');
+      colEl.dataset.status = col.id;
+      colEl.style.cssText = 'min-width:230px;max-width:300px;flex:1;background:var(--input-bg);border:1px solid var(--gold-dim);border-radius:12px;padding:10px;display:flex;flex-direction:column;gap:8px';
+      colEl.innerHTML = `<div style="font-size:.85rem;font-weight:700;color:var(--gold)">${col.label} <span style="opacity:.6;font-weight:400">(${tasks.length})</span></div>`;
+
+      // drop-зона
+      colEl.addEventListener('dragover', e => { e.preventDefault(); colEl.style.background = 'rgba(201,149,42,.12)'; });
+      colEl.addEventListener('dragleave', () => { colEl.style.background = 'var(--input-bg)'; });
+      colEl.addEventListener('drop', e => {
+        e.preventDefault();
+        colEl.style.background = 'var(--input-bg)';
+        const id = e.dataTransfer.getData('text/plain');
+        if (id) eitiBoardUpdate(id, { status: col.id }).then(boardRenderPanel);
+      });
+
+      tasks.forEach(t => {
+        const prio = { high:'🔴', medium:'🟡', low:'🟢' }[t.priority] || '⚪';
+        const tags = (t.tags||[]).map(x => `<span style="background:rgba(201,149,42,.15);padding:1px 5px;border-radius:5px;font-size:9px">${escapeHtml(x)}</span>`).join(' ');
+        const card = document.createElement('div');
+        card.draggable = true;
+        card.style.cssText = 'background:var(--card-bg);border:1px solid var(--gold-dim);border-radius:8px;padding:8px 10px;font-size:12px;cursor:grab';
+        card.innerHTML = `
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:6px">
+            <div style="font-weight:700;flex:1">${prio} ${escapeHtml(t.title)}</div>
+            <button onclick="eitiBoardDelete('${t.id}').then(boardRenderPanel)" style="background:none;border:none;color:#ff6b6b;cursor:pointer;padding:0 2px">✕</button>
+          </div>
+          ${t.description?`<div style="font-size:11px;opacity:.7;margin-top:2px">${escapeHtml(t.description)}</div>`:''}
+          ${t.dueDate?`<div style="font-size:10px;opacity:.6;margin-top:2px">📅 ${escapeHtml(t.dueDate)}</div>`:''}
+          ${tags?`<div style="margin-top:4px">${tags}</div>`:''}`;
+        card.addEventListener('dragstart', e => { e.dataTransfer.setData('text/plain', t.id); card.style.opacity = '.5'; });
+        card.addEventListener('dragend', () => { card.style.opacity = '1'; });
+        colEl.appendChild(card);
+      });
+      wrap.appendChild(colEl);
+    });
+
+    const stats = document.getElementById('board-panel-stats');
+    if (stats) {
+      stats.innerHTML = all.length
+        ? `<b>${all.length}</b> задач · перетаскивай карточки между колонками`
+        : '📭 Доска пуста — добавь задачу кнопкой «＋ Задача» или попроси AI';
+    }
+  });
+}
+
+function boardPanelAddPrompt() {
+  const title = prompt('Название задачи:');
+  if (!title || !title.trim()) return;
+  eitiBoardAdd({ title: title.trim(), status: 'To Do', priority: 'medium' }).then(boardRenderPanel);
 }
 
 // Parse [TASK_ADD:status|title|desc|date|priority|tags] from AI replies
