@@ -2704,8 +2704,26 @@ window.addEventListener('beforeinstallprompt', e => {
   document.getElementById('installBtn').classList.add('visible');
 });
 
+// Приложение уже запущено как установленное PWA?
+function wizIsStandalone() {
+  return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+}
+
+// Инструкция по ручной установке для браузеров без beforeinstallprompt (Samsung Internet, iOS Safari)
+function wizShowManualInstallHint() {
+  const ua = navigator.userAgent;
+  const isIOS = /iphone|ipad|ipod/i.test(ua);
+  const isRu = (typeof currentLang === 'undefined') || currentLang === 'ru';
+  const msg = isIOS
+    ? (isRu ? '📲 Установка: кнопка «Поделиться» → «На экран «Домой»' : '📲 Install: Share → Add to Home Screen')
+    : (isRu ? '📲 Установка: меню браузера ⋮ → «Установить приложение» / «Добавить на главный экран»'
+            : '📲 Install: browser menu ⋮ → “Install app” / “Add to Home screen”');
+  showToast(msg);
+}
+
 document.getElementById('installBtn').addEventListener('click', async () => {
-  if (!deferredInstall) return;
+  // Нет нативного промпта (Samsung Internet / iOS) — показываем инструкцию вручную
+  if (!deferredInstall) { wizShowManualInstallHint(); return; }
   deferredInstall.prompt();
   const { outcome } = await deferredInstall.userChoice;
   if (outcome === 'accepted') {
@@ -2715,10 +2733,21 @@ document.getElementById('installBtn').addEventListener('click', async () => {
   deferredInstall = null;
 });
 
+// Если за ~2.5 с beforeinstallprompt не пришёл, а приложение не установлено —
+// всё равно показываем кнопку как ручную точку входа (Samsung Internet, iOS Safari).
+window.addEventListener('load', () => {
+  setTimeout(() => {
+    if (!deferredInstall && !wizIsStandalone()) {
+      document.getElementById('installBtn')?.classList.add('visible');
+    }
+  }, 2500);
+});
+
 window.addEventListener('appinstalled', () => {
   showToast('✅ EITI WIZARD установлен как приложение');
   document.getElementById('pwaStatus').textContent = 'Установлено ✓';
   document.getElementById('pwaDot').classList.add('online');
+  document.getElementById('installBtn')?.classList.remove('visible');
 });
 
 // ── Network status ───────────────────────────────────────────────────────
