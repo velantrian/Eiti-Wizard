@@ -2605,7 +2605,7 @@ const DB_VERSION = 6;
 const STORES     = ['messages', 'config', 'memory', 'agent_backups', 'files', 'chats', 'agents', 'chunks', 'tasks'];
 
 // Единый источник версии приложения (используется в шапке, sys-info, ответах бота)
-const APP_VERSION = '1.8.0';
+const APP_VERSION = '1.8.1';
 document.addEventListener('DOMContentLoaded', () => {
   const _vl = document.getElementById('appVersionLabel');
   if (_vl) _vl.textContent = 'v' + APP_VERSION;
@@ -4824,7 +4824,47 @@ function _wizInitMemSchema() {
   db.run(`CREATE TABLE IF NOT EXISTS wiz_l2_digests (
     id TEXT PRIMARY KEY, summary TEXT, source_ids TEXT, created_at INTEGER
   )`);
+  // v1.8.1: FTS5-индекс заметок (порт идеи из Velantrim — BM25-поиск вместо includes)
+  db.run(`CREATE VIRTUAL TABLE IF NOT EXISTS wiz_notes_fts
+    USING fts5(id UNINDEXED, title, body, tokenize='unicode61')`);
   _wizSaveDB();
+}
+
+// ── Заметки: FTS5-индекс + BM25-поиск ─────────────────────────
+// Индекс держим в том же _wizDB. Ребилд ленивый: notesSave ставит
+// dirty-флаг, wizSearchNotes пересобирает только при необходимости.
+let _wizNotesIdxDirty = true;
+
+function wizNotesReindex() {
+  const db = window._wizDB; if (!db) return false;
+  try {
+    db.run('DELETE FROM wiz_notes_fts');
+    const notes = notesLoad();
+    for (const n of notes) {
+      db.run('INSERT INTO wiz_notes_fts(id,title,body)VALUES(?,?,?)',
+        [String(n.id), n.title || '', n.body || '']);
+    }
+    _wizSaveDB();
+    _wizNotesIdxDirty = false;
+    return true;
+  } catch(e) { if (window.EITI_DEBUG) console.warn('[NotesFTS] reindex', e.message); return false; }
+}
+
+// Возвращает упорядоченный по релевантности массив id заметок или null,
+// если FTS недоступен (тогда вызывающий откатывается на includes()).
+function wizSearchNotes(query) {
+  const db = window._wizDB; if (!db) return null;
+  const terms = String(query || '').toLowerCase().match(/[\wа-яё]{2,}/gi);
+  if (!terms || !terms.length) return null;
+  if (_wizNotesIdxDirty && !wizNotesReindex()) return null;
+  const match = terms.map(t => t.replace(/"/g,'') + '*').join(' ');
+  try {
+    const res = db.exec(
+      'SELECT id FROM wiz_notes_fts WHERE wiz_notes_fts MATCH ? ORDER BY bm25(wiz_notes_fts) LIMIT 200',
+      [match]);
+    if (!res.length) return [];
+    return res[0].values.map(r => r[0]);
+  } catch(e) { if (window.EITI_DEBUG) console.warn('[NotesFTS] search', e.message); return null; }
 }
 
 // ── FSRS: power-law retention ─────────────────────────────────
@@ -10779,6 +10819,7 @@ function notesLoad() {
 }
 function notesSave(notes) {
   localStorage.setItem('wiz_notes_v1', JSON.stringify(notes));
+  _wizNotesIdxDirty = true; // FTS-индекс пересоберётся при следующем поиске
 }
 
 function notesGetLayout() {
@@ -10819,11 +10860,21 @@ function notesRender(filter) {
     list.style.gap = '10px';
   }
   let notes = notesLoad();
+  let _ftsOrdered = false;
   if (filter) {
-    const q = filter.toLowerCase();
-    notes = notes.filter(n => (n.title||'').toLowerCase().includes(q) || (n.body||'').toLowerCase().includes(q));
+    // v1.8.1: сначала пробуем FTS5/BM25; если индекс недоступен — includes()
+    const ids = (typeof wizSearchNotes === 'function') ? wizSearchNotes(filter) : null;
+    if (ids) {
+      const rank = new Map(ids.map((id, i) => [String(id), i]));
+      notes = notes.filter(n => rank.has(String(n.id)));
+      notes.sort((a, b) => rank.get(String(a.id)) - rank.get(String(b.id)));
+      _ftsOrdered = true; // порядок уже по релевантности
+    } else {
+      const q = filter.toLowerCase();
+      notes = notes.filter(n => (n.title||'').toLowerCase().includes(q) || (n.body||'').toLowerCase().includes(q));
+    }
   }
-  notes.sort((a,b) => (b.updated||0)-(a.updated||0));
+  if (!_ftsOrdered) notes.sort((a,b) => (b.updated||0)-(a.updated||0));
   if (!notes.length) {
     const emptyMsg = filter
       ? (t.notes_empty_search || 'Ничего не найдено')
