@@ -1100,6 +1100,11 @@ main {
   line-height: 1.5;
   white-space: pre-wrap;
   word-break: break-word;
+  max-height: 100px;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
 }
 
 /* ── Splash / offline screen ───────────────────────────── */
@@ -1205,6 +1210,104 @@ main {
   .msg-think-status { font-size:12px; opacity:.8; margin-bottom:5px; display:flex; align-items:center; gap:5px; }
 
   .mode-tab.tab-hidden { display: none !important; }
+
+/* Header quick-nav buttons for Chat/Agent */
+#header-quick-nav {
+  display: flex; gap: 6px; align-items: center;
+  flex: 1; justify-content: center;
+}
+.hqn-btn {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 5px 10px; border-radius: 10px;
+  border: 1px solid rgba(201,149,42,0.35);
+  background: rgba(201,149,42,0.08);
+  color: var(--gold-light); font-family: 'Cinzel', serif;
+  font-size: 0.7rem; font-weight: 600; cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
+  white-space: nowrap;
+}
+.hqn-btn:hover { background: rgba(201,149,42,0.18); border-color: rgba(201,149,42,0.6); }
+.hqn-btn.hqn-active { background: rgba(201,149,42,0.22); border-color: var(--gold); color: var(--gold); }
+
+/* History content overflow fix */
+.history-content {
+  max-height: 100px;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+}
+
+/* Collapsible long messages */
+.msg-collapsible { position: relative; }
+.msg-collapsible.msg-collapsed .msg-content {
+  max-height: 8.5em;
+  overflow: hidden;
+}
+.msg-collapsible.msg-collapsed .msg-collapse-fade {
+  display: block;
+}
+.msg-collapse-fade {
+  display: none;
+  position: absolute; bottom: 28px; left: 0; right: 0;
+  height: 48px;
+  background: linear-gradient(to bottom, transparent, var(--card-bg, rgba(20,12,35,0.95)));
+  pointer-events: none;
+}
+.msg-collapse-btn {
+  display: block; width: 100%; text-align: center;
+  margin-top: 4px; padding: 3px 0;
+  font-size: 0.72rem; color: var(--gold-dim);
+  background: none; border: none; cursor: pointer;
+  font-family: 'Cinzel', serif; letter-spacing: 0.04em;
+}
+.msg-collapse-btn:hover { color: var(--gold); }
+
+/* Paste chip in sent message bubble */
+.wiz-paste-bubble {
+  display: flex; align-items: flex-start; gap: 8px;
+  background: rgba(120,80,200,0.10); border: 1px solid rgba(120,80,200,0.35);
+  border-radius: 10px; padding: 8px 10px; margin-top: 6px;
+  cursor: pointer; transition: background 0.2s;
+}
+.wiz-paste-bubble:hover { background: rgba(120,80,200,0.18); }
+.wiz-paste-bubble .wpb-icon { font-size: 1rem; flex-shrink: 0; margin-top: 1px; }
+.wiz-paste-bubble .wpb-body { flex: 1; min-width: 0; }
+.wiz-paste-bubble .wpb-title {
+  font-size: 0.72rem; color: #b088ff; font-weight: 700;
+  margin-bottom: 3px; letter-spacing: 0.03em;
+}
+.wiz-paste-bubble .wpb-preview {
+  font-size: 0.78rem; color: var(--text-dim); line-height: 1.4;
+  overflow: hidden; text-overflow: ellipsis;
+  display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical;
+  white-space: pre-wrap; word-break: break-word;
+}
+
+/* Paste chip modal */
+.wiz-paste-modal-bg {
+  position: fixed; inset: 0; z-index: 9000;
+  background: rgba(0,0,0,0.7); backdrop-filter: blur(4px);
+  display: flex; align-items: center; justify-content: center; padding: 20px;
+}
+.wiz-paste-modal {
+  background: var(--card-bg); border: 1px solid rgba(201,149,42,0.3);
+  border-radius: 16px; padding: 20px; max-width: 480px; width: 100%;
+  max-height: 70vh; display: flex; flex-direction: column; gap: 12px;
+}
+.wiz-paste-modal-hdr {
+  display: flex; align-items: center; justify-content: space-between;
+  font-family: 'Cinzel', serif; font-size: 0.85rem; color: var(--gold); font-weight: 700;
+}
+.wiz-paste-modal-close {
+  background: none; border: none; color: var(--text-dim); cursor: pointer;
+  font-size: 1.2rem; line-height: 1; padding: 2px;
+}
+.wiz-paste-modal-body {
+  flex: 1; overflow-y: auto; font-size: 0.82rem; color: var(--text);
+  line-height: 1.6; white-space: pre-wrap; word-break: break-word;
+  background: rgba(0,0,0,0.2); border-radius: 8px; padding: 12px;
+}
 
   /* ═══ RNE Diary ═══ */
   #panel-diary { flex-direction:column; height:100%; background:var(--bg); overflow:hidden; }
@@ -1344,6 +1447,9 @@ main {
         <div class="header-title">VELAN EITI</div>
         <div class="header-subtitle" id="appVersionLabel">v1.7.8</div>
       </div>
+    </div>
+    <div id="header-quick-nav" style="display:none">
+      <!-- rendered by headerQuickNavApply() -->
     </div>
     <div class="header-actions">
       <div class="status-dot" id="statusDot" title="Статус сети"></div>
@@ -2407,7 +2513,7 @@ main {
         <!-- Tab Visibility Card -->
         <div class="card" id="tab-visibility-card">
           <div class="card-title" data-i18n="card_modules">🧩 Модули — включить / отключить</div>
-          <p data-i18n="modules_desc" style="font-size:.78rem;color:var(--text-dim);margin-bottom:12px;line-height:1.5">Чат, Агент и Настройки всегда активны. Остальные модули можно скрыть чтобы не загромождать панель.</p>
+          <p data-i18n="modules_desc" style="font-size:.78rem;color:var(--text-dim);margin-bottom:12px;line-height:1.5">Настройки — всегда активны. Чат и Агент можно скрыть из панели вкладок и открывать через кнопки в шапке.</p>
           <div id="tab-toggles-list">
             <!-- генерируется tabVisibilityInit() -->
           </div>
@@ -8352,7 +8458,7 @@ const LANGS = {
     btn_clear_short:'🗑 Очистить',
     confirm_clear_board:'Удалить все задачи?',
     card_modules:'🧩 Модули — включить / отключить',
-    modules_desc:'Чат, Агент и Настройки всегда активны. Остальные модули можно скрыть чтобы не загромождать панель.',
+    modules_desc:'Настройки — всегда активны. Чат и Агент можно скрыть из панели вкладок и открывать через кнопки в шапке.',
     btn_show_all:'✓ Показать все',
     btn_hide_all:'🧹 Скрыть все',
     toast_all_modules_on:'Все модули включены',
@@ -9634,8 +9740,8 @@ var TAB_VIS_KEY = 'wiz_tab_visibility';
 // Все вкладки с мета-данными
 // v1.7.8: переводы берутся из LANGS[currentLang] во время рендера
 var TAB_DEFS = [
-  { panel:'chat',       icon:'💬', labelKey:'mod_chat',       descKey:'mod_chat_desc',       required:true  },
-  { panel:'agent',      icon:'⚡', labelKey:'mod_agent',      descKey:'mod_agent_desc',      required:true  },
+  { panel:'chat',       icon:'💬', labelKey:'mod_chat',       descKey:'mod_chat_desc',       required:false },
+  { panel:'agent',      icon:'⚡', labelKey:'mod_agent',      descKey:'mod_agent_desc',      required:false },
   { panel:'memory',     icon:'🧠', labelKey:'mod_memory',     descKey:'mod_memory_desc',     required:false },
   { panel:'notes',      icon:'📝', labelKey:'mod_notes',      descKey:'mod_notes_desc',      required:false },
   { panel:'eiti-files', icon:'💾', labelKey:'mod_eiti_files', descKey:'mod_eiti_files_desc', required:false },
@@ -9647,7 +9753,15 @@ var TAB_DEFS = [
 ];
 
 function tabVisLoadState() {
-  try { return JSON.parse(localStorage.getItem(TAB_VIS_KEY) || '{}'); } catch(e) { return {}; }
+  try {
+    var stored = localStorage.getItem(TAB_VIS_KEY);
+    if (stored === null) {
+      var def = { chat: false, agent: false };
+      localStorage.setItem(TAB_VIS_KEY, JSON.stringify(def));
+      return def;
+    }
+    return JSON.parse(stored) || {};
+  } catch(e) { return {}; }
 }
 
 function tabVisIsHidden(panel) {
@@ -9674,12 +9788,56 @@ function tabVisToggle(panel, visible) {
   if (!visible && activePanel === panel) { switchPanel('chat'); }
 }
 
+// Header quick-nav state
+var TAB_HDR_VIS_KEY = 'wiz_tab_hdr_vis';
+function tabVisHdrLoadState() {
+  try {
+    var stored = localStorage.getItem(TAB_HDR_VIS_KEY);
+    if (stored === null) return { chat: true, agent: true };
+    return JSON.parse(stored) || {};
+  } catch(e) { return { chat: true, agent: true }; }
+}
+function tabVisHdrToggle(panel, visible) {
+  var state = tabVisHdrLoadState();
+  state[panel] = visible;
+  localStorage.setItem(TAB_HDR_VIS_KEY, JSON.stringify(state));
+  headerQuickNavApply();
+}
+function headerQuickNavApply() {
+  var container = document.getElementById('header-quick-nav');
+  if (!container) return;
+  var state = tabVisHdrLoadState();
+  var btns = [];
+  if (state.chat !== false) {
+    btns.push('<button class="hqn-btn" id="hqn-chat" onclick="switchPanel(\'chat\')" title="Чат">💬 <span>Чат</span></button>');
+  }
+  if (state.agent !== false) {
+    btns.push('<button class="hqn-btn" id="hqn-agent" onclick="switchPanel(\'agent\')" title="Агент">⚡ <span>Агент</span></button>');
+  }
+  if (btns.length > 0) {
+    container.style.display = 'flex';
+    container.innerHTML = btns.join('');
+  } else {
+    container.style.display = 'none';
+    container.innerHTML = '';
+  }
+  // Update active state
+  headerQuickNavUpdateActive();
+}
+function headerQuickNavUpdateActive() {
+  var chatBtn = document.getElementById('hqn-chat');
+  var agentBtn = document.getElementById('hqn-agent');
+  if (chatBtn) chatBtn.classList.toggle('hqn-active', activePanel === 'chat');
+  if (agentBtn) agentBtn.classList.toggle('hqn-active', activePanel === 'agent');
+}
+
 function tabVisibilityInit() {
   var container = document.getElementById('tab-toggles-list');
   if (!container) return;
   var state = tabVisLoadState();
+  var hdrState = tabVisHdrLoadState();
   var t = (typeof LANGS !== 'undefined' ? (LANGS[currentLang] || LANGS.ru) : {});
-  var rows = TAB_DEFS.filter(function(d){ return !d.required; }).map(function(def) {
+  var rows = TAB_DEFS.map(function(def) {
     var visible = state[def.panel] !== false;
     var chk = visible ? 'checked' : '';
     var lbl = t[def.labelKey] || def.labelKey;
@@ -9699,13 +9857,38 @@ function tabVisibilityInit() {
   });
   var btnShow = t.btn_show_all || '✓ Показать все';
   var btnHide = t.btn_hide_all || '🧹 Скрыть все';
+
+  // Header quick-nav section
+  var hdrRows = ['chat','agent'].map(function(panel) {
+    var def = TAB_DEFS.find(function(d){ return d.panel === panel; });
+    var chkH = hdrState[panel] !== false ? 'checked' : '';
+    var lbl = t[(def && def.labelKey) || ''] || panel;
+    return '<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid rgba(201,149,42,.05)">'
+      + '<div style="display:flex;align-items:center;gap:8px">'
+        + '<span style="font-size:1rem;width:26px;text-align:center">' + (def ? def.icon : '') + '</span>'
+        + '<span style="font-size:.85rem;color:var(--text)">' + lbl + '</span>'
+      + '</div>'
+      + '<label style="cursor:pointer;flex-shrink:0;margin-left:12px">'
+        + '<input type="checkbox" ' + chkH + ' style="width:18px;height:18px;accent-color:var(--gold);cursor:pointer" data-hdr-panel="' + panel + '">'
+      + '</label>'
+    + '</div>';
+  });
+
   container.innerHTML = rows.join('')
     + '<div style="margin-top:12px;display:flex;gap:8px">'
     + '<button onclick="tabVisShowAll()" style="flex:1;padding:8px;border-radius:10px;border:1px solid var(--gold-dim);background:transparent;color:var(--gold);font-size:.8rem;cursor:pointer">' + btnShow + '</button>'
     + '<button onclick="tabVisHideOptional()" style="flex:1;padding:8px;border-radius:10px;border:1px solid var(--gold-dim);background:transparent;color:var(--text-dim);font-size:.8rem;cursor:pointer">' + btnHide + '</button>'
+    + '</div>'
+    + '<div style="margin-top:16px;padding-top:12px;border-top:1px solid rgba(201,149,42,.15)">'
+    + '<div style="font-size:.75rem;font-weight:700;color:var(--gold);letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px">🏠 В шапке приложения</div>'
+    + '<div style="font-size:.72rem;color:var(--text-dim);margin-bottom:8px">Показывать кнопки Чат / Агент в верхней шапке</div>'
+    + hdrRows.join('')
     + '</div>';
   container.querySelectorAll('input[data-panel]').forEach(function(inp) {
     inp.addEventListener('change', function() { tabVisToggle(this.dataset.panel, this.checked); });
+  });
+  container.querySelectorAll('input[data-hdr-panel]').forEach(function(inp) {
+    inp.addEventListener('change', function() { tabVisHdrToggle(this.dataset.hdrPanel, this.checked); });
   });
   tabVisApply();
 }
