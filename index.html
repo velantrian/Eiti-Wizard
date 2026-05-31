@@ -399,9 +399,16 @@ header {
   font-family: 'Cinzel', serif;
   font-size: 1.05rem; font-weight: 700;
   letter-spacing: 0.08em;
-  color: var(--gold-light);
+  color: #f0c850;
   line-height: 1;
-  text-shadow: 0 0 12px rgba(201,149,42,0.45), 0 1px 3px rgba(0,0,0,0.7);
+  text-shadow:
+    0 1px 0 rgba(255,240,160,0.95),
+    0 -1px 0 rgba(90,50,0,0.9),
+    1px 0 0 rgba(255,210,90,0.35),
+    -1px 0 0 rgba(90,50,0,0.25),
+    0 2px 5px rgba(0,0,0,0.75),
+    0 0 10px rgba(220,160,30,0.55),
+    0 0 22px rgba(201,149,42,0.28);
 }
 .header-subtitle {
   font-size: 0.68rem; color: var(--text-dim);
@@ -4314,7 +4321,9 @@ document.getElementById('chatClearBtn').addEventListener('click', () => {
 
   if (chatClearClickCount === 1) {
     chatClearTimeout = setTimeout(() => {
-      document.getElementById('chatInput').value = '';
+      const inp = document.getElementById('chatInput');
+      inp.value = '';
+      inp.style.height = 'auto';
       showToast('🗑️ Поле очищено');
       chatClearClickCount = 0;
     }, 300);
@@ -4382,7 +4391,9 @@ document.getElementById('agentClearBtn').addEventListener('click', () => {
 
   if (agentClearClickCount === 1) {
     agentClearTimeout = setTimeout(() => {
-      document.getElementById('agentInput').value = '';
+      const inp = document.getElementById('agentInput');
+      inp.value = '';
+      inp.style.height = 'auto';
       showToast('🗑️ Поле очищено');
       agentClearClickCount = 0;
     }, 300);
@@ -6672,16 +6683,20 @@ document.getElementById('agentInput').addEventListener('keydown', e => {
 });
 
 // v1.7.4: PasteChip — вставка длинного текста → chip вместо вставки в поле
-chatInput.addEventListener('paste', function(e) {
+function _wizHandlePaste(e) {
   const text = (e.clipboardData || window.clipboardData).getData('text');
   if (text && text.length >= WIZ_PASTE_THRESHOLD) {
     e.preventDefault();
     if (!window._wizPasteChips) window._wizPasteChips = [];
     window._wizPasteChips.push({ text: text, id: Date.now() });
     wizRenderFileChips();
+    // reset textarea height since text didn't enter the field
+    this.style.height = 'auto';
     showToast(`📋 Текст ${text.length} симв. — добавлен как чип`);
   }
-});
+}
+chatInput.addEventListener('paste', _wizHandlePaste);
+document.getElementById('agentInput').addEventListener('paste', _wizHandlePaste);
 
 // Auto-resize textarea
 [chatInput, document.getElementById('agentInput')].forEach(el => {
