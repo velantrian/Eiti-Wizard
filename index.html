@@ -1546,6 +1546,7 @@ main {
         <button id="notesLayoutBtnVertical" onclick="notesSetLayout('vertical')" data-i18n-title="notes_layout_vertical" title="Вертикально" style="padding:6px 12px;border:none;background:transparent;color:var(--text);font-size:.78rem;font-weight:700;cursor:pointer">☰</button>
         <button id="notesLayoutBtnSheets" onclick="notesSetLayout('sheets')" data-i18n-title="notes_layout_sheets" title="Окошки" style="padding:6px 12px;border:none;background:transparent;color:var(--text);font-size:.78rem;font-weight:700;cursor:pointer">▦</button>
       </div>
+      <div id="notesFolders" style="display:flex;gap:6px;flex-wrap:wrap;padding:0 16px 8px"></div>
       <div id="notesList" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:4px 12px 80px;overflow-y:auto;flex:1"></div>
     </section>
 
@@ -1557,7 +1558,15 @@ main {
         <button onclick="notesEditorSave()" data-i18n="btn_save_short" style="padding:7px 18px;border-radius:10px;border:none;background:var(--gold);color:#000;font-weight:700;font-size:.88rem;cursor:pointer">💾 Сохранить</button>
       </div>
       <input id="noteEditorTitle" data-i18n-ph="ph_note_title" placeholder="Заголовок…" style="padding:14px 16px;border:none;background:transparent;color:var(--text);font-size:1.1rem;font-weight:700;width:100%;box-sizing:border-box;outline:none">
-      <textarea id="noteEditorBody" data-i18n-ph="ph_note_body" placeholder="Начни писать…" style="flex:1;padding:0 16px 16px;border:none;background:transparent;color:var(--text);font-size:.95rem;line-height:1.7;resize:none;outline:none;font-family:inherit;overflow-y:auto"></textarea>
+      <!-- v1.8.4: папка + теги + цвет -->
+      <div style="display:flex;gap:8px;padding:6px 16px 10px;flex-wrap:wrap;align-items:center;border-bottom:1px solid var(--gold-dim)">
+        <input id="noteEditorFolder" list="noteFolderList" data-i18n-ph="ph_note_folder" placeholder="📁 Папка…" style="flex:1;min-width:120px;padding:7px 10px;border-radius:9px;border:1px solid var(--gold-dim);background:var(--input-bg);color:var(--text);font-size:.82rem">
+        <datalist id="noteFolderList"></datalist>
+        <input id="noteEditorTags" data-i18n-ph="ph_note_tags" placeholder="🏷 теги, через запятую…" style="flex:2;min-width:140px;padding:7px 10px;border-radius:9px;border:1px solid var(--gold-dim);background:var(--input-bg);color:var(--text);font-size:.82rem">
+        <div id="noteEditorColors" style="display:flex;gap:6px;align-items:center"></div>
+        <input type="hidden" id="noteEditorColor">
+      </div>
+      <textarea id="noteEditorBody" data-i18n-ph="ph_note_body" placeholder="Начни писать…" style="flex:1;padding:14px 16px 16px;border:none;background:transparent;color:var(--text);font-size:.95rem;line-height:1.7;resize:none;outline:none;font-family:inherit;overflow-y:auto"></textarea>
       <input type="hidden" id="noteEditorId">
     </div>
 
@@ -2620,7 +2629,7 @@ const DB_VERSION = 6;
 const STORES     = ['messages', 'config', 'memory', 'agent_backups', 'files', 'chats', 'agents', 'chunks', 'tasks'];
 
 // Единый источник версии приложения (используется в шапке, sys-info, ответах бота)
-const APP_VERSION = '1.8.3';
+const APP_VERSION = '1.8.4';
 document.addEventListener('DOMContentLoaded', () => {
   const _vl = document.getElementById('appVersionLabel');
   if (_vl) _vl.textContent = 'v' + APP_VERSION;
@@ -4857,8 +4866,11 @@ function wizNotesReindex() {
     db.run('DELETE FROM wiz_notes_fts');
     const notes = notesLoad();
     for (const n of notes) {
+      // теги и папку добавляем в индексируемый body — поиск находит их тоже
+      const extra = [(n.tags || []).join(' '), n.folder || ''].filter(Boolean).join(' ');
+      const body = (n.body || '') + (extra ? ' ' + extra : '');
       db.run('INSERT INTO wiz_notes_fts(id,title,body)VALUES(?,?,?)',
-        [String(n.id), n.title || '', n.body || '']);
+        [String(n.id), n.title || '', body]);
     }
     _wizSaveDB();
     _wizNotesIdxDirty = false;
@@ -10204,6 +10216,9 @@ function boardRenderPanel() {
     const byStatus = {};
     BOARD_PANEL_COLUMNS.forEach(c => byStatus[c.id] = []);
     all.forEach(t => { const s = t.status || 'To Do'; (byStatus[s] = byStatus[s] || []).push(t); });
+    // порядок внутри колонки: явный order, иначе по дате создания
+    Object.keys(byStatus).forEach(s =>
+      byStatus[s].sort((a, b) => _boardOrder(a) - _boardOrder(b)));
 
     wrap.innerHTML = '';
     BOARD_PANEL_COLUMNS.forEach(col => {
@@ -10213,20 +10228,30 @@ function boardRenderPanel() {
       colEl.style.cssText = 'min-width:230px;max-width:300px;flex:1;background:var(--input-bg);border:1px solid var(--gold-dim);border-radius:12px;padding:10px;display:flex;flex-direction:column;gap:8px';
       colEl.innerHTML = `<div style="font-size:.85rem;font-weight:700;color:var(--gold)">${col.label} <span style="opacity:.6;font-weight:400">(${tasks.length})</span></div>`;
 
-      // drop-зона
+      // drop-зона: меняем и статус (между колонками), и порядок (внутри колонки)
       colEl.addEventListener('dragover', e => { e.preventDefault(); colEl.style.background = 'rgba(201,149,42,.12)'; });
       colEl.addEventListener('dragleave', () => { colEl.style.background = 'var(--input-bg)'; });
       colEl.addEventListener('drop', e => {
         e.preventDefault();
         colEl.style.background = 'var(--input-bg)';
         const id = e.dataTransfer.getData('text/plain');
-        if (id) eitiBoardUpdate(id, { status: col.id }).then(boardRenderPanel);
+        if (!id) return;
+        // индекс вставки по вертикальной позиции курсора среди карточек колонки
+        const cards = [...colEl.querySelectorAll('.board-card')].filter(c => c.dataset.id !== id);
+        let idx = cards.length;
+        for (let i = 0; i < cards.length; i++) {
+          const r = cards[i].getBoundingClientRect();
+          if (e.clientY < r.top + r.height / 2) { idx = i; break; }
+        }
+        boardMoveTask(id, col.id, idx);
       });
 
       tasks.forEach(t => {
         const prio = { high:'🔴', medium:'🟡', low:'🟢' }[t.priority] || '⚪';
         const tags = (t.tags||[]).map(x => `<span style="background:rgba(201,149,42,.15);padding:1px 5px;border-radius:5px;font-size:9px">${escapeHtml(x)}</span>`).join(' ');
         const card = document.createElement('div');
+        card.className = 'board-card';
+        card.dataset.id = t.id;
         card.draggable = true;
         card.style.cssText = 'background:var(--card-bg);border:1px solid var(--gold-dim);border-radius:8px;padding:8px 10px;font-size:12px;cursor:grab';
         card.innerHTML = `
@@ -10251,6 +10276,27 @@ function boardRenderPanel() {
         : '📭 Доска пуста — добавь задачу кнопкой «＋ Задача» или попроси AI';
     }
   });
+}
+
+// порядковый ключ карточки: явный order имеет приоритет, иначе дата создания
+function _boardOrder(t) {
+  return (typeof t.order === 'number') ? t.order : (t.created || 0);
+}
+
+// Переместить задачу в колонку status на позицию idx и пересчитать порядок.
+async function boardMoveTask(id, status, idx) {
+  const all = await eitiBoardLoadAsync();
+  const dragged = all.find(t => t.id === id);
+  if (!dragged) return;
+  let colTasks = all
+    .filter(t => (t.status || 'To Do') === status && t.id !== id)
+    .sort((a, b) => _boardOrder(a) - _boardOrder(b));
+  dragged.status = status;
+  colTasks.splice(Math.max(0, Math.min(idx, colTasks.length)), 0, dragged);
+  // перенумеровываем всю колонку (0..n) и сохраняем только эту колонку
+  await Promise.all(colTasks.map((t, i) =>
+    eitiBoardUpdate(t.id, { status, order: i })));
+  boardRenderPanel();
 }
 
 function boardPanelAddPrompt() {
@@ -10905,6 +10951,69 @@ const NOTE_COLORS = [
 ];
 const NOTE_EMOJIS = ['📝','💡','🔥','⭐','🎯','🌟','💎','🚀','🌙','🎨'];
 
+// v1.8.4: активный фильтр по папке ('' = все папки)
+let _notesFolder = '';
+
+// Список уникальных папок из всех заметок
+function notesAllFolders() {
+  const set = new Set();
+  notesLoad().forEach(n => { if (n.folder) set.add(n.folder); });
+  return [...set].sort((a, b) => a.localeCompare(b, 'ru'));
+}
+
+// Палитра цветов в редакторе заметки
+function _notesRenderColorPicker(selectedIdx) {
+  const wrap = document.getElementById('noteEditorColors');
+  const hid  = document.getElementById('noteEditorColor');
+  if (!wrap || !hid) return;
+  hid.value = selectedIdx;
+  wrap.innerHTML = '';
+  NOTE_COLORS.forEach((c, i) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.title = 'Цвет ' + (i + 1);
+    b.style.cssText = `width:22px;height:22px;border-radius:50%;cursor:pointer;background:${c.bg};border:2px solid ${i === selectedIdx ? 'var(--gold)' : c.border}`;
+    b.addEventListener('click', () => _notesRenderColorPicker(i));
+    wrap.appendChild(b);
+  });
+}
+
+// Подсказки папок в datalist редактора
+function _notesUpdateFolderDatalist() {
+  const dl = document.getElementById('noteFolderList');
+  if (!dl) return;
+  dl.innerHTML = notesAllFolders().map(f => `<option value="${escapeHtml(f)}">`).join('');
+}
+
+// Чипы папок над списком заметок
+function notesRenderFolderChips() {
+  const bar = document.getElementById('notesFolders');
+  if (!bar) return;
+  const folders = notesAllFolders();
+  if (_notesFolder && !folders.includes(_notesFolder)) _notesFolder = ''; // папка исчезла
+  if (!folders.length) { bar.innerHTML = ''; return; }
+  const t = LANGS[currentLang] || LANGS.ru;
+  bar.innerHTML = '';
+  const addChip = (label, val) => {
+    const active = _notesFolder === val;
+    const b = document.createElement('button');
+    b.textContent = label;
+    b.style.cssText = `padding:4px 10px;border-radius:14px;font-size:.78rem;cursor:pointer;`
+      + `border:1px solid ${active ? 'var(--gold)' : 'var(--gold-dim)'};`
+      + `background:${active ? 'var(--gold)' : 'transparent'};`
+      + `color:${active ? '#000' : 'var(--text)'};font-weight:${active ? '700' : '400'}`;
+    b.addEventListener('click', () => notesSetFolder(val));
+    bar.appendChild(b);
+  };
+  addChip(t.notes_all_folders || '📂 Все', '');
+  folders.forEach(f => addChip('📁 ' + f, f));
+}
+
+function notesSetFolder(folder) {
+  _notesFolder = folder || '';
+  notesRender(document.getElementById('notesSearch')?.value || '');
+}
+
 function notesLoad() {
   try { return JSON.parse(localStorage.getItem('wiz_notes_v1')||'[]'); } catch { return []; }
 }
@@ -10950,7 +11059,10 @@ function notesRender(filter) {
     list.style.gridTemplateColumns = '1fr 1fr';
     list.style.gap = '10px';
   }
+  notesRenderFolderChips();
   let notes = notesLoad();
+  // v1.8.4: фильтр по активной папке
+  if (_notesFolder) notes = notes.filter(n => (n.folder || '') === _notesFolder);
   let _ftsOrdered = false;
   if (filter) {
     // v1.8.1: сначала пробуем FTS5/BM25; если индекс недоступен ИЛИ дал 0
@@ -10982,6 +11094,14 @@ function notesRender(filter) {
     const col = NOTE_COLORS[ci];
     const emoji = NOTE_EMOJIS[(n.emojiIdx||0) % NOTE_EMOJIS.length];
     const date = new Date(n.updated||0).toLocaleDateString(dateLocale, {day:'2-digit',month:'short'});
+    // v1.8.4: чипы тегов + бейдж папки
+    const tagsHtml = (n.tags && n.tags.length)
+      ? `<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:6px">` +
+        n.tags.slice(0, 5).map(x => `<span style="background:rgba(201,149,42,.15);color:var(--gold);padding:1px 6px;border-radius:8px;font-size:9px">${escapeHtml(x)}</span>`).join('') +
+        `</div>`
+      : '';
+    const folderHtml = n.folder
+      ? `<span style="font-size:.65rem;color:var(--text-dim);opacity:.7">📁 ${escapeHtml(n.folder)}</span>` : '';
     if (layout === 'vertical') {
       const preview = (n.body||'').slice(0, 200);
       return `<div onclick="notesOpen('${n.id}')"
@@ -10993,6 +11113,7 @@ function notesRender(filter) {
             <div style="font-size:.7rem;color:var(--text-dim);opacity:.6;flex-shrink:0">${date}</div>
           </div>
           ${preview ? `<div style="font-size:.8rem;color:var(--text-dim);line-height:1.45;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(preview)}${preview.length >= 200 ? '…' : ''}</div>` : ''}
+          ${folderHtml}${tagsHtml}
         </div>
       </div>`;
     }
@@ -11002,7 +11123,8 @@ function notesRender(filter) {
         style="padding:10px 12px;border-radius:10px;border:1px solid rgba(0,0,0,.08);background:#ffffff;color:#222;cursor:pointer;user-select:none;min-height:100px;word-break:break-word;box-shadow:0 1px 3px rgba(0,0,0,.08)">
         <div style="font-size:.88rem;font-weight:700;line-height:1.25;margin-bottom:4px;color:#111">${escapeHtml(n.title||untitled)}</div>
         ${preview ? `<div style="font-size:.76rem;color:#555;line-height:1.4">${escapeHtml(preview)}${preview.length >= 180 ? '…' : ''}</div>` : ''}
-        <div style="font-size:.68rem;color:#888;margin-top:6px">${date}</div>
+        ${tagsHtml}
+        <div style="font-size:.68rem;color:#888;margin-top:6px">${n.folder ? '📁 ' + escapeHtml(n.folder) + ' · ' : ''}${date}</div>
       </div>`;
     }
     // tiles (default)
@@ -11012,7 +11134,8 @@ function notesRender(filter) {
       <div style="font-size:1.2rem;margin-bottom:4px">${emoji}</div>
       <div style="font-size:.9rem;font-weight:700;line-height:1.3;margin-bottom:4px;color:var(--text)">${escapeHtml(n.title||untitled)}</div>
       ${preview ? `<div style="font-size:.78rem;color:var(--text-dim);line-height:1.4">${escapeHtml(preview)}${preview.length >= 120 ? '…' : ''}</div>` : ''}
-      <div style="font-size:.7rem;color:var(--text-dim);margin-top:6px;opacity:.6">${date}</div>
+      ${tagsHtml}
+      <div style="font-size:.7rem;color:var(--text-dim);margin-top:6px;opacity:.6">${n.folder ? '📁 ' + escapeHtml(n.folder) + ' · ' : ''}${date}</div>
     </div>`;
   }).join('');
 }
@@ -11022,6 +11145,10 @@ function notesNew() {
   document.getElementById('noteEditorId').value = '';
   document.getElementById('noteEditorTitle').value = '';
   document.getElementById('noteEditorBody').value = '';
+  document.getElementById('noteEditorFolder').value = _notesFolder || ''; // префилл активной папкой
+  document.getElementById('noteEditorTags').value = '';
+  _notesUpdateFolderDatalist();
+  _notesRenderColorPicker(Math.floor(Math.random() * NOTE_COLORS.length));
   document.getElementById('noteEditorMeta').textContent = t.notes_new || 'Новая заметка';
   const ov = document.getElementById('noteEditorOverlay');
   ov.style.display = 'flex';
@@ -11034,6 +11161,10 @@ function notesOpen(id) {
   document.getElementById('noteEditorId').value = id;
   document.getElementById('noteEditorTitle').value = n.title||'';
   document.getElementById('noteEditorBody').value = n.body||'';
+  document.getElementById('noteEditorFolder').value = n.folder || '';
+  document.getElementById('noteEditorTags').value = (n.tags || []).join(', ');
+  _notesUpdateFolderDatalist();
+  _notesRenderColorPicker((n.colorIdx || 0) % NOTE_COLORS.length);
   const _locale = currentLang === 'en' ? 'en-US' : 'ru';
   document.getElementById('noteEditorMeta').textContent = new Date(n.updated||0).toLocaleString(_locale);
   const ov = document.getElementById('noteEditorOverlay');

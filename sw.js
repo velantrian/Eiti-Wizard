@@ -1,5 +1,5 @@
-// sw.js — Eiti Wizard Service Worker v1.8.3
-const CACHE_NAME = 'eiti-wizard-v1.8.3';
+// sw.js — Eiti Wizard Service Worker v1.8.4
+const CACHE_NAME = 'eiti-wizard-v1.8.4';
 const BASE_PATH = '/Eiti-Wizard';
 
 const STATIC_ASSETS = [
