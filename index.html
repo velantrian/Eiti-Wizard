@@ -2620,7 +2620,7 @@ const DB_VERSION = 6;
 const STORES     = ['messages', 'config', 'memory', 'agent_backups', 'files', 'chats', 'agents', 'chunks', 'tasks'];
 
 // Единый источник версии приложения (используется в шапке, sys-info, ответах бота)
-const APP_VERSION = '1.8.2';
+const APP_VERSION = '1.8.3';
 document.addEventListener('DOMContentLoaded', () => {
   const _vl = document.getElementById('appVersionLabel');
   if (_vl) _vl.textContent = 'v' + APP_VERSION;
@@ -10953,9 +10953,11 @@ function notesRender(filter) {
   let notes = notesLoad();
   let _ftsOrdered = false;
   if (filter) {
-    // v1.8.1: сначала пробуем FTS5/BM25; если индекс недоступен — includes()
+    // v1.8.1: сначала пробуем FTS5/BM25; если индекс недоступен ИЛИ дал 0
+    // совпадений (напр. подстрока внутри токена: «script» в «JavaScript») —
+    // откатываемся на includes(), чтобы не терять заметки.
     const ids = (typeof wizSearchNotes === 'function') ? wizSearchNotes(filter) : null;
-    if (ids) {
+    if (ids && ids.length) {
       const rank = new Map(ids.map((id, i) => [String(id), i]));
       notes = notes.filter(n => rank.has(String(n.id)));
       notes.sort((a, b) => rank.get(String(a.id)) - rank.get(String(b.id)));
