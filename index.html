@@ -2897,6 +2897,7 @@ function switchPanel(panel, push = true) {
   tab.classList.add('active');
   panelEl.classList.add('active');
   activePanel = panel;
+  if (typeof headerQuickNavUpdateActive === 'function') headerQuickNavUpdateActive();
   if (panel === 'memory') { memPanelLoad(); }
   if (panel === 'notes')  { notesSetLayout(notesGetLayout()); }
   if (panel === 'eiti-files') { eitiFilesRender(''); }
@@ -3378,7 +3379,7 @@ function renderMarkdown(text) {
 }
 
 
-function appendMsg(text, role, container, attachedFiles) {
+function appendMsg(text, role, container, attachedFiles, pasteChips) {
   container = container || chatHistory;
   const div = document.createElement('div');
   div.className = 'msg ' + (role === 'user' ? 'user' : 'ai');
@@ -3397,6 +3398,23 @@ function appendMsg(text, role, container, attachedFiles) {
         <div class="wac-info">
           <span class="wac-name">${escapeHtml(f.name)}</span>
           <span class="wac-meta">${escapeHtml(f.method || 'TextDecoder')} · ${kb} KB · нажми для просмотра</span>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  // Paste chips in bubble
+  let _pasteChipsHTML = '';
+  if (role === 'user' && pasteChips && pasteChips.length) {
+    _pasteChipsHTML = pasteChips.map((p, idx) => {
+      const preview = escapeHtml((p.text || '').slice(0, 200));
+      const chars = (p.text || '').length;
+      const safeText = encodeURIComponent(p.text || '');
+      return `<div class="wiz-paste-bubble" onclick="wizViewPasteChip(decodeURIComponent('${safeText}'))">
+        <span class="wpb-icon">📎</span>
+        <div class="wpb-body">
+          <div class="wpb-title">Вставленный текст · ${chars} симв.</div>
+          <div class="wpb-preview">${preview}</div>
         </div>
       </div>`;
     }).join('');
@@ -3439,13 +3457,18 @@ function appendMsg(text, role, container, attachedFiles) {
         }
       </div>
     </div>
-    <div id="${msgId}" class="msg-content">${_fileCardsHTML}${processedText}</div>
+    <div id="${msgId}" class="msg-content">${_fileCardsHTML}${_pasteChipsHTML}${processedText}</div>
     <div id="${msgId}-edit-actions" class="msg-edit-actions" style="display:none;margin-top:8px;gap:6px;">
       <button class="msg-action-btn" onclick="cancelEdit('${msgId}')" title="Отмена">↩️</button>
       <button class="msg-action-btn" onclick="confirmEdit('${msgId}')" title="Отправить">📤</button>
     </div>
   `;
   container.appendChild(div);
+
+  // Add collapse behavior for long AI messages
+  if (role === 'ai') {
+    wizAddCollapseBehavior(div, msgId);
+  }
 
   // Auto-scroll only if user hasn't manually scrolled
   if (!container.dataset.userScrolled) {
@@ -3470,6 +3493,43 @@ function appendMsg(text, role, container, attachedFiles) {
   });
 
   return div;
+}
+
+// Open modal to view full paste chip text
+window.wizViewPasteChip = function(text) {
+  var existing = document.getElementById('wiz-paste-modal-bg');
+  if (existing) existing.remove();
+  var bg = document.createElement('div');
+  bg.className = 'wiz-paste-modal-bg';
+  bg.id = 'wiz-paste-modal-bg';
+  bg.innerHTML = '<div class="wiz-paste-modal">'
+    + '<div class="wiz-paste-modal-hdr"><span>📎 Вставленный текст</span><button class="wiz-paste-modal-close" onclick="document.getElementById(\'wiz-paste-modal-bg\').remove()">✕</button></div>'
+    + '<div class="wiz-paste-modal-body">' + escapeHtml(text) + '</div>'
+    + '</div>';
+  bg.addEventListener('click', function(e) { if (e.target === bg) bg.remove(); });
+  document.body.appendChild(bg);
+};
+
+// Add collapse behavior for long messages
+const WIZ_COLLAPSE_THRESHOLD = 400; // chars
+function wizAddCollapseBehavior(msgDiv, msgId) {
+  var contentEl = msgDiv.querySelector('.msg-content');
+  if (!contentEl) return;
+  var textLen = (contentEl.innerText || contentEl.textContent || '').length;
+  if (textLen < WIZ_COLLAPSE_THRESHOLD) return;
+  msgDiv.classList.add('msg-collapsible', 'msg-collapsed');
+  var fade = document.createElement('div');
+  fade.className = 'msg-collapse-fade';
+  msgDiv.style.position = 'relative';
+  msgDiv.appendChild(fade);
+  var btn = document.createElement('button');
+  btn.className = 'msg-collapse-btn';
+  btn.textContent = '▾ Развернуть';
+  btn.addEventListener('click', function() {
+    var collapsed = msgDiv.classList.toggle('msg-collapsed');
+    btn.textContent = collapsed ? '▾ Развернуть' : '▴ Свернуть';
+  });
+  msgDiv.appendChild(btn);
 }
 
 function showTyping(container) {
@@ -5953,7 +6013,8 @@ async function sendMessage(inputEl, historyEl) {
 
   // v1.7.5/v1.7.8: снимок прикреплённых файлов на момент отправки (для bubble)
   const _filesAtSend = activePanel === 'chat' ? chatFiles.slice() : agentFiles.slice();
-  appendMsg(text, 'user', historyEl, _filesAtSend);
+  const _pasteChipsAtSend = (window._wizPasteChips || []).slice();
+  appendMsg(text, 'user', historyEl, _filesAtSend, _pasteChipsAtSend);
   // v1.7.5 FIX: сохраняем снимок файлов ДО очистки — он уйдёт в getFilesContext
   window._wizFilesSentSnapshot = activePanel === 'chat' ? chatFiles.slice() : agentFiles.slice();
   // очищаем чипы после отправки
@@ -6696,12 +6757,15 @@ async function loadHistory() {
   const searchQuery = document.getElementById('historySearch').value.toLowerCase();
   const items = await dbGetAll('messages');
   const chats = await dbGetAll('chats').catch(() => []);
+  const agents = await dbGetAll('agents').catch(() => []);
   const cont = document.getElementById('historyItems');
   cont.innerHTML = '';
 
-  // Build chat name map
+  // Build chat/agent name maps
   const chatNames = {};
   (chats || []).forEach(c => { chatNames[c.id] = c.title || ('Чат ' + c.id.slice(-4)); });
+  const agentNames = {};
+  (agents || []).forEach(a => { agentNames[a.id] = a.title || ('Агент ' + a.id.slice(-4)); });
 
   let filtered = items;
   if (filter !== 'all') filtered = items.filter(i => i.panel === filter);
@@ -6734,20 +6798,24 @@ async function loadHistory() {
 
   sortedChatIds.forEach(cid => {
     const msgs = byChat[cid].sort((a,b) => (a.ts||0)-(b.ts||0));
-    const chatName = chatNames[cid] || ('Чат ' + cid.slice(-6));
+    const isAgentSession = msgs.some(m => m.panel === 'agent');
+    const sessionIcon = isAgentSession ? '🤖' : '💬';
+    const defaultName = isAgentSession ? ('Агент ' + cid.slice(-6)) : ('Чат ' + cid.slice(-6));
+    const chatName = (isAgentSession ? agentNames[cid] : chatNames[cid]) || defaultName;
+    const sessionLabel = isAgentSession ? ('Агент 🤖 ' + chatName) : chatName;
     const newest = Math.max(...msgs.map(m => m.ts||0));
     const dateStr = newest ? new Date(newest).toLocaleString('ru-RU', {day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}) : '';
-    const isCurrentChat = cid === activeChatId;
+    const isCurrentChat = cid === activeChatId || cid === activeAgentId;
 
     // Chat group header
     const hdr = document.createElement('div');
     hdr.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:rgba(201,149,42,.1);border-radius:10px;margin-bottom:4px;margin-top:10px;cursor:pointer;border:1px solid var(--gold-dim)';
     hdr.innerHTML = `
       <div>
-        <div style="font-size:.88rem;font-weight:700;color:var(--gold)">💬 ${chatName}</div>
+        <div style="font-size:.88rem;font-weight:700;color:var(--gold)">${sessionIcon} ${sessionLabel}</div>
         <div style="font-size:.72rem;color:var(--text-dim)">${msgs.length} сообщений · ${dateStr}</div>
       </div>
-      <button onclick="event.stopPropagation();historyOpenChat('${cid}')" 
+      <button onclick="event.stopPropagation();historyOpenChat('${cid}')"
         style="padding:6px 14px;border-radius:9px;border:1px solid var(--gold-dim);background:${isCurrentChat?'rgba(201,149,42,.25)':'var(--card-bg)'};color:var(--gold);font-size:.78rem;font-weight:700;cursor:pointer;white-space:nowrap">
         ${isCurrentChat ? '✅ Текущий' : '▶ Открыть'}
       </button>`;
@@ -8108,7 +8176,7 @@ openDB().then(() => {
   (function(){ const v=localStorage.getItem('wiz_max_tokens')||'8000'; const sl=document.getElementById('cfgMaxTokens'); const lb=document.getElementById('token-budget-val'); if(sl){sl.value=v;} if(lb){lb.textContent=Number(v).toLocaleString('ru');} })();
   // P2 fix: use requestIdleCallback for non-critical init to avoid UI thread freezes
   const _rIC = window.requestIdleCallback || (cb => setTimeout(cb, 0));
-  _rIC(() => { tabVisibilityInit(); if (typeof eitiInitMemoryAndBoard === 'function') eitiInitMemoryAndBoard(); });
+  _rIC(() => { tabVisibilityInit(); headerQuickNavApply(); if (typeof eitiInitMemoryAndBoard === 'function') eitiInitMemoryAndBoard(); });
   showToast('⚡ EITI WIZARD загружен');
 }).catch(err => console.warn('IndexedDB:', err));
 
