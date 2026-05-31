@@ -3153,33 +3153,30 @@ async function saveChunks(chunks) {
   }
 }
 
-// Поиск релевантных чанков по запросу (простое совпадение слов)
+// Поиск релевантных чанков по запросу
+// v1.9.1: BM25 + русский стемминг (wizBM25). Fallback на подстроку,
+// если BM25 ничего не нашёл (например, очень короткий запрос).
 async function findRelevantChunks(query, maxChunks = 5) {
   if (!db) return [];
   const allChunks = await dbGetAll('chunks');
-  
-  // Приводим запрос к нижнему регистру и разбиваем на слова
-  const queryWords = query.toLowerCase().split(/\s+/).filter(w => w.length > 2);
-  
+  if (!allChunks.length) return [];
+
+  // Основной путь: BM25 со стеммингом по содержимому чанка.
+  const ranked = (typeof wizBM25 === 'function')
+    ? wizBM25(query, allChunks, c => c.content || '', maxChunks)
+    : [];
+  if (ranked.length) {
+    return ranked.map(r => ({ ...r.item, score: r.score }));
+  }
+
+  // Fallback: точное вхождение подстроки (для запросов из стоп-слов/цифр).
   const lowerQuery = query.toLowerCase();
-
-  // Оцениваем релевантность каждого чанка
   const scoredChunks = allChunks.map(chunk => {
-    const content = chunk.content.toLowerCase();
+    const content = (chunk.content || '').toLowerCase();
     let score = 0;
-
-    // Бонус за точное совпадение фразы (один раз на чанк, не внутри цикла)
     if (content.includes(lowerQuery)) score += 20;
-
-    queryWords.forEach(word => {
-      const matches = content.split(word).length - 1;
-      score += matches * 10;
-    });
-
     return { ...chunk, score };
   });
-  
-  // Сортируем по релевантности и берем топ N
   scoredChunks.sort((a, b) => b.score - a.score);
   return scoredChunks.filter(c => c.score > 0).slice(0, maxChunks);
 }
@@ -4736,6 +4733,156 @@ function _agentToolUseEnabled() {
 }
 
 // ════════════════════════════════════════════════════════════════
+// v1.9.1 — ПОИСК БЕЗ EMBEDDINGS: стеммер + BM25 + сниппеты (TextRank)
+// Перенос ядра поиска из VELANTRIM EITI. Никаких внешних зависимостей,
+// никаких embeddings и offline-LLM — чистый лексический поиск.
+// ════════════════════════════════════════════════════════════════
+
+// ── Стоп-слова RU/EN/DE (общие с памятью _WIZ_STOP, но шире) ──────
+const _WIZ_STOP_SEARCH = new Set([
+  'и','в','во','не','что','это','как','а','но','да','же','ли','то','за','для',
+  'к','с','из','у','о','от','до','по','при','без','или','бы','есть','нет','тот',
+  'там','так','уже','все','ещё','еще','мне','меня','тебе','себя','свои','свой',
+  'нас','вас','они','мы','он','она','оно','был','была','было','были','быть',
+  'the','a','an','of','to','in','is','it','was','for','are','with','and','or',
+  'und','die','der','das','ist','ein','mit','von','zu','den','dem'
+]);
+
+// ── Русский морфологический стеммер (порт eitiStemWord) ──────────
+// Срезает частотные окончания → «минералы»/«минерал»/«минералов» = «минерал».
+function wizStem(word) {
+  if (!word) return '';
+  const w = word.toLowerCase().replace(/ё/g, 'е');
+  if (w.length <= 3) return w;
+  const endings = ['ающий','ающая','ающее','ающие','ованный','ованная',
+    'ающих','ающим','ающими','ающему',
+    'ать','еть','ить','уть',
+    'ающ','ующ','ящий','ящая','ящее','ящие',
+    'ской','ского','скому','скую','ские','ских',
+    'ный','ного','ному','ную','ные','ных','ным',
+    'ией','ию','ия','ии','ием',
+    'ов','ев','ям','ях','ами','ах',
+    'ой','ей','ий','ый','ую','юю',
+    'ть','ся','сь',
+    'ая','яя','ое','ее','ие','ые',
+    'а','я','о','е','и','ы','у','ю','ь'];
+  for (let i = 0; i < endings.length; i++) {
+    const end = endings[i];
+    if (w.length > end.length + 2 && w.slice(-end.length) === end) {
+      return w.slice(0, -end.length);
+    }
+  }
+  return w;
+}
+
+// ── Токенизация со стеммингом (RU+EN+DE, цифры) ──────────────────
+function wizSearchTok(str) {
+  return (str || '').toLowerCase().replace(/ё/g, 'е')
+    .replace(/[^а-яa-z0-9\s]/gi, ' ')
+    .split(/\s+/)
+    .filter(t => t.length > 2 && !_WIZ_STOP_SEARCH.has(t))
+    .map(wizStem);
+}
+
+// ── BM25 поверх массива объектов (порт _idbBM25 / bm25fIDB) ───────
+// query   — строка запроса
+// entries — массив объектов
+// fieldFn — (e) => текст для индексации
+// topK    — сколько вернуть (по умолчанию 40)
+// Возвращает [{ item, score }] по убыванию релевантности.
+const wizBM25 = (function() {
+  const K1 = 1.5, B = 0.75;
+
+  function scoreDoc(docToks, docLen, qt, avgdl, dfMap, N) {
+    let tf = 0;
+    for (let i = 0; i < docToks.length; i++) if (docToks[i] === qt) tf++;
+    if (!tf) return 0;
+    const df = dfMap[qt] || 1;
+    const idf = Math.log((N - df + 0.5) / (df + 0.5) + 1);
+    const norm = K1 * (1 - B + B * docLen / Math.max(1, avgdl));
+    return idf * (tf * (K1 + 1)) / (tf + norm);
+  }
+
+  return function bm25Search(query, entries, fieldFn, topK) {
+    if (!query || !entries || !entries.length) return [];
+    const qToks = [...new Set(wizSearchTok(query))];
+    if (!qToks.length) return [];
+
+    const docs = entries.map(e => wizSearchTok(fieldFn(e)));
+    const N = docs.length;
+    const df = {};
+    docs.forEach(d => {
+      const seen = {};
+      d.forEach(t => { if (!seen[t]) { seen[t] = 1; df[t] = (df[t] || 0) + 1; } });
+    });
+    const avgdl = docs.reduce((s, d) => s + d.length, 0) / Math.max(1, N);
+
+    return entries.map((e, i) => {
+      let score = 0;
+      qToks.forEach(qt => { score += scoreDoc(docs[i], docs[i].length, qt, avgdl, df, N); });
+      return { item: e, score };
+    }).filter(x => x.score > 0)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, topK || 40);
+  };
+})();
+
+// ── TextRank-сниппет: топ-N предложений из длинного текста ────────
+// Порт eitiTextRank — извлекает самые «центральные» предложения
+// (PageRank по сходству Жаккара) + бонус за совпадение с запросом.
+function wizExtractSnippet(text, topN, queryTerms) {
+  topN = topN || 2;
+  if (!text || text.length < 80) return text || '';
+  if (text.length > 8000) text = text.slice(0, 8000);
+  function tk(s) {
+    return s.toLowerCase().replace(/ё/g, 'е').replace(/[^\wа-яёА-ЯЁ\s]/g, ' ')
+      .split(/\s+/)
+      .filter(t => t.length > 2 && !_WIZ_STOP_SEARCH.has(t))
+      .map(wizStem);
+  }
+  let sents = text.replace(/([.!?…])\s+/g, '$1\n').split(/\n+/)
+    .map(s => s.trim()).filter(s => s.length > 20);
+  if (sents.length > 25) sents = sents.slice(0, 25); // O(n²) cap для мобильного UI
+  if (sents.length <= 2) return sents.slice(0, topN).join(' ');
+  const tokenized = sents.map(tk);
+  function sim(a, b) {
+    const sa = {}, sb = {}; let inter = 0;
+    a.forEach(t => { sa[t] = 1; });
+    b.forEach(t => { sb[t] = 1; });
+    Object.keys(sa).forEach(t => { if (sb[t]) inter++; });
+    const ua = Object.keys(sa).length, ub = Object.keys(sb).length;
+    const union = ua + ub - inter;
+    return union > 0 ? inter / union : 0;
+  }
+  const n = sents.length;
+  let scores = new Array(n).fill(1.0);
+  for (let iter = 0; iter < 10; iter++) {
+    const newS = new Array(n).fill(0.15);
+    for (let i = 0; i < n; i++) {
+      let total = 0;
+      for (let j = 0; j < n; j++) { if (i !== j) total += sim(tokenized[i], tokenized[j]); }
+      for (let j = 0; j < n; j++) {
+        if (i === j) continue;
+        const w = total > 0 ? sim(tokenized[i], tokenized[j]) / total : 0;
+        newS[j] += 0.85 * w * scores[i];
+      }
+    }
+    scores = newS;
+  }
+  if (queryTerms && queryTerms.length) {
+    sents.forEach((s, i) => {
+      const lower = s.toLowerCase();
+      queryTerms.forEach(t => { if (lower.indexOf(t) !== -1) scores[i] += 0.5; });
+    });
+  }
+  const ranked = scores.map((sc, i) => ({ i, sc }));
+  ranked.sort((a, b) => b.sc - a.sc);
+  const top = ranked.slice(0, topN).map(x => x.i);
+  top.sort((a, b) => a - b);
+  return top.map(i => sents[i]).join(' ');
+}
+
+// ════════════════════════════════════════════════════════════════
 // v1.8.0 — SQLite WASM ПАМЯТЬ L1/L2/L3 + FTS5/BM25 + FSRS
 // ════════════════════════════════════════════════════════════════
 
@@ -5253,24 +5400,47 @@ async function executeAgentTool(name, args) {
       }
       case 'chat_search': {
         if (!db) return 'БД недоступна.';
-        const q = String(args.query||'').trim().toLowerCase();
-        if (!q) return 'Пустой запрос.';
+        const rawQ = String(args.query||'').trim();
+        if (!rawQ) return 'Пустой запрос.';
+        const q = rawQ.toLowerCase();
         const limit = Math.max(1, Math.min(50, Number(args.limit) || 20));
         const chats = await dbGetAll('chats');
         const chatTitles = {}; chats.forEach(c => { chatTitles[c.id] = c.title || ('Чат ' + (c.id||'').slice(-4)); });
         const msgs = await dbGetAll('messages');
-        const matches = msgs
-          .filter(m => m.panel === 'chat' && (m.content||'').toLowerCase().includes(q))
-          .sort((a,b) => (b.ts||0) - (a.ts||0))
-          .slice(0, limit);
+        const chatMsgs = msgs.filter(m => m.panel === 'chat' && (m.content||'').trim());
+
+        // v1.9.1: BM25-ранжирование со стеммингом вместо includes-подстроки.
+        const qTerms = (typeof wizSearchTok === 'function') ? wizSearchTok(rawQ) : [];
+        let matches;
+        const ranked = (typeof wizBM25 === 'function')
+          ? wizBM25(rawQ, chatMsgs, m => m.content || '', limit)
+          : [];
+        if (ranked.length) {
+          matches = ranked.map(r => r.item);
+        } else {
+          // Fallback: подстрока (короткий/цифровой запрос).
+          matches = chatMsgs
+            .filter(m => (m.content||'').toLowerCase().includes(q))
+            .sort((a,b) => (b.ts||0) - (a.ts||0))
+            .slice(0, limit);
+        }
         if (!matches.length) return `Совпадений по "${args.query}" не найдено.`;
         return matches.map(m => {
           const title = chatTitles[m.chatId] || (m.chatId||'?').slice(-4);
           const role = m.role === 'user' ? 'Пользователь' : 'AI';
           const when = m.ts ? new Date(m.ts).toLocaleString('ru') : '?';
+          // Сниппет: TextRank-выжимка с подсветкой по терминам запроса,
+          // либо окно вокруг точного вхождения подстроки.
+          let snippet;
           const idx = (m.content||'').toLowerCase().indexOf(q);
-          const start = Math.max(0, idx - 60);
-          const snippet = (m.content||'').slice(start, start + 200);
+          if (idx !== -1) {
+            const start = Math.max(0, idx - 60);
+            snippet = (m.content||'').slice(start, start + 200);
+          } else if (typeof wizExtractSnippet === 'function') {
+            snippet = wizExtractSnippet(m.content||'', 1, qTerms) || (m.content||'').slice(0, 200);
+          } else {
+            snippet = (m.content||'').slice(0, 200);
+          }
           return `[${when}] "${title}" — ${role}: …${snippet}…`;
         }).join('\n');
       }
