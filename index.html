@@ -1473,6 +1473,7 @@ main {
     <button class="mode-tab" data-panel="notes"><span class="tab-icon">📝</span><span class="tab-label" data-i18n="tab_notes">Заметки</span></button>
     <button class="mode-tab" data-panel="files"><span class="tab-icon">📁</span><span class="tab-label" data-i18n="tab_files">Файлы</span></button>
     <button class="mode-tab" data-panel="eiti-files"><span class="tab-icon">💾</span><span class="tab-label" data-i18n="tab_eiti_files">EITI Файлы</span></button>
+    <button class="mode-tab" data-panel="board"><span class="tab-icon">📋</span><span class="tab-label" data-i18n="tab_board">Доска</span></button>
     <button class="mode-tab" data-panel="diary" id="tab-diary"><span class="tab-icon">📓</span><span class="tab-label" data-i18n="tab_diary">Дневник</span></button>
     <button class="mode-tab" data-panel="settings"><span class="tab-icon">⚙</span><span class="tab-label" data-i18n="tab_settings">Настройки</span></button>
   </nav>
@@ -1658,6 +1659,7 @@ main {
         <button id="notesLayoutBtnVertical" onclick="notesSetLayout('vertical')" data-i18n-title="notes_layout_vertical" title="Вертикально" style="padding:6px 12px;border:none;background:transparent;color:var(--text);font-size:.78rem;font-weight:700;cursor:pointer">☰</button>
         <button id="notesLayoutBtnSheets" onclick="notesSetLayout('sheets')" data-i18n-title="notes_layout_sheets" title="Окошки" style="padding:6px 12px;border:none;background:transparent;color:var(--text);font-size:.78rem;font-weight:700;cursor:pointer">▦</button>
       </div>
+      <div id="notesFolders" style="display:flex;gap:6px;flex-wrap:wrap;padding:0 16px 8px"></div>
       <div id="notesList" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:4px 12px 80px;overflow-y:auto;flex:1"></div>
     </section>
 
@@ -1669,7 +1671,15 @@ main {
         <button onclick="notesEditorSave()" data-i18n="btn_save_short" style="padding:7px 18px;border-radius:10px;border:none;background:var(--gold);color:#000;font-weight:700;font-size:.88rem;cursor:pointer">💾 Сохранить</button>
       </div>
       <input id="noteEditorTitle" data-i18n-ph="ph_note_title" placeholder="Заголовок…" style="padding:14px 16px;border:none;background:transparent;color:var(--text);font-size:1.1rem;font-weight:700;width:100%;box-sizing:border-box;outline:none">
-      <textarea id="noteEditorBody" data-i18n-ph="ph_note_body" placeholder="Начни писать…" style="flex:1;padding:0 16px 16px;border:none;background:transparent;color:var(--text);font-size:.95rem;line-height:1.7;resize:none;outline:none;font-family:inherit;overflow-y:auto"></textarea>
+      <!-- v1.8.4: папка + теги + цвет -->
+      <div style="display:flex;gap:8px;padding:6px 16px 10px;flex-wrap:wrap;align-items:center;border-bottom:1px solid var(--gold-dim)">
+        <input id="noteEditorFolder" list="noteFolderList" data-i18n-ph="ph_note_folder" placeholder="📁 Папка…" style="flex:1;min-width:120px;padding:7px 10px;border-radius:9px;border:1px solid var(--gold-dim);background:var(--input-bg);color:var(--text);font-size:.82rem">
+        <datalist id="noteFolderList"></datalist>
+        <input id="noteEditorTags" data-i18n-ph="ph_note_tags" placeholder="🏷 теги, через запятую…" style="flex:2;min-width:140px;padding:7px 10px;border-radius:9px;border:1px solid var(--gold-dim);background:var(--input-bg);color:var(--text);font-size:.82rem">
+        <div id="noteEditorColors" style="display:flex;gap:6px;align-items:center"></div>
+        <input type="hidden" id="noteEditorColor">
+      </div>
+      <textarea id="noteEditorBody" data-i18n-ph="ph_note_body" placeholder="Начни писать…" style="flex:1;padding:14px 16px 16px;border:none;background:transparent;color:var(--text);font-size:.95rem;line-height:1.7;resize:none;outline:none;font-family:inherit;overflow-y:auto"></textarea>
       <input type="hidden" id="noteEditorId">
     </div>
 
@@ -2393,6 +2403,22 @@ main {
           <button onclick="if(confirm(LANGS[currentLang].confirm_clear_eiti_mem||'Удалить ВСЮ EITI Memory?')){eitiMemClearAll();}" class="btn-small btn-danger" data-i18n="btn_clear_all_memory" style="width:100%;margin-top:8px">🗑 Очистить всю память</button>
         </div>
 
+        <!-- ═══ Умные подсказки — 3 чипа после ответа (порт из Velantrim) ═══ -->
+        <div class="card" id="wiz-sugg-card">
+          <div class="card-title">💡 Умные подсказки</div>
+          <p style="font-size:.8rem;color:var(--text-dim);line-height:1.5;margin-bottom:10px">
+            После каждого ответа AI предлагает 3 коротких вопроса-продолжения в виде чипов.
+            Клик по чипу сразу отправляет вопрос. Расходует один доп. запрос к провайдеру.
+          </p>
+          <div class="toggle-row">
+            <div>
+              <div class="toggle-label">Подсказки включены</div>
+              <div class="toggle-sub">3 чипа под ответом · клик — отправить</div>
+            </div>
+            <label style="cursor:pointer"><input type="checkbox" id="toggleWizSugg" checked style="width:18px;height:18px;accent-color:var(--gold)"></label>
+          </div>
+        </div>
+
         <!-- ═══ Фрактальная память — управление слоями L0/L1/L2/L3 ═══ -->
         <div class="card" id="fractal-memory-card">
           <div class="card-title">🧬 Фрактальная память</div>
@@ -2622,6 +2648,20 @@ main {
       </div>
     </section>
 
+    <!-- ── Board / Kanban panel (порт из Velantrim: доска как панель) ── -->
+    <section class="panel" id="panel-board">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px 8px;gap:8px;flex-wrap:wrap">
+        <div style="font-size:1.05rem;font-weight:700;color:var(--gold)">📋 Доска задач</div>
+        <div style="display:flex;gap:6px">
+          <button onclick="boardPanelAddPrompt()" class="btn-small" style="background:linear-gradient(145deg,#1a4a8a,#2563eb);color:#fff;border:none">＋ Задача</button>
+          <button onclick="eitiBoardExport()" class="btn-small">📤</button>
+          <button onclick="if(confirm(LANGS[currentLang].confirm_clear_board||'Удалить все задачи?')){eitiBoardClearAll();boardRenderPanel();}" class="btn-small btn-danger">🗑</button>
+        </div>
+      </div>
+      <div id="board-panel-stats" style="font-size:.78rem;color:var(--text-dim);padding:0 16px 8px"></div>
+      <div id="boardColumns" style="display:flex;gap:12px;padding:4px 12px 80px;overflow-x:auto;flex:1;align-items:flex-start"></div>
+    </section>
+
     <!-- ── Diary / RNE panel ───────────────────────────────────────── -->
     <section class="panel" id="panel-diary">
       <div class="rne-header">
@@ -2703,7 +2743,7 @@ const DB_VERSION = 6;
 const STORES     = ['messages', 'config', 'memory', 'agent_backups', 'files', 'chats', 'agents', 'chunks', 'tasks'];
 
 // Единый источник версии приложения (используется в шапке, sys-info, ответах бота)
-const APP_VERSION = '1.7.8';
+const APP_VERSION = '1.8.4';
 document.addEventListener('DOMContentLoaded', () => {
   const _vl = document.getElementById('appVersionLabel');
   if (_vl) _vl.textContent = 'v' + APP_VERSION;
@@ -2909,6 +2949,7 @@ function switchPanel(panel, push = true) {
   if (panel === 'memory') { memPanelLoad(); }
   if (panel === 'notes')  { notesSetLayout(notesGetLayout()); }
   if (panel === 'eiti-files') { eitiFilesRender(''); }
+  if (panel === 'board') { if (typeof boardRenderPanel === 'function') boardRenderPanel(); }
   if (panel === 'history') { if (typeof loadHistory === 'function') loadHistory(); }
   if (panel === 'files') { if (typeof updateStats === 'function') updateStats(); }
   if (panel === 'projects') renderProjectsList();
@@ -5133,7 +5174,50 @@ function _wizInitMemSchema() {
   db.run(`CREATE TABLE IF NOT EXISTS wiz_l2_digests (
     id TEXT PRIMARY KEY, summary TEXT, source_ids TEXT, created_at INTEGER
   )`);
+  // v1.8.1: FTS5-индекс заметок (порт идеи из Velantrim — BM25-поиск вместо includes)
+  db.run(`CREATE VIRTUAL TABLE IF NOT EXISTS wiz_notes_fts
+    USING fts5(id UNINDEXED, title, body, tokenize='unicode61')`);
   _wizSaveDB();
+}
+
+// ── Заметки: FTS5-индекс + BM25-поиск ─────────────────────────
+// Индекс держим в том же _wizDB. Ребилд ленивый: notesSave ставит
+// dirty-флаг, wizSearchNotes пересобирает только при необходимости.
+let _wizNotesIdxDirty = true;
+
+function wizNotesReindex() {
+  const db = window._wizDB; if (!db) return false;
+  try {
+    db.run('DELETE FROM wiz_notes_fts');
+    const notes = notesLoad();
+    for (const n of notes) {
+      // теги и папку добавляем в индексируемый body — поиск находит их тоже
+      const extra = [(n.tags || []).join(' '), n.folder || ''].filter(Boolean).join(' ');
+      const body = (n.body || '') + (extra ? ' ' + extra : '');
+      db.run('INSERT INTO wiz_notes_fts(id,title,body)VALUES(?,?,?)',
+        [String(n.id), n.title || '', body]);
+    }
+    _wizSaveDB();
+    _wizNotesIdxDirty = false;
+    return true;
+  } catch(e) { if (window.EITI_DEBUG) console.warn('[NotesFTS] reindex', e.message); return false; }
+}
+
+// Возвращает упорядоченный по релевантности массив id заметок или null,
+// если FTS недоступен (тогда вызывающий откатывается на includes()).
+function wizSearchNotes(query) {
+  const db = window._wizDB; if (!db) return null;
+  const terms = String(query || '').toLowerCase().match(/[\wа-яё]{2,}/gi);
+  if (!terms || !terms.length) return null;
+  if (_wizNotesIdxDirty && !wizNotesReindex()) return null;
+  const match = terms.map(t => t.replace(/"/g,'') + '*').join(' ');
+  try {
+    const res = db.exec(
+      'SELECT id FROM wiz_notes_fts WHERE wiz_notes_fts MATCH ? ORDER BY bm25(wiz_notes_fts) LIMIT 200',
+      [match]);
+    if (!res.length) return [];
+    return res[0].values.map(r => r[0]);
+  } catch(e) { if (window.EITI_DEBUG) console.warn('[NotesFTS] search', e.message); return null; }
 }
 
 // ── FSRS: power-law retention ─────────────────────────────────
@@ -6533,6 +6617,7 @@ AI провайдеры: Ollama (офлайн, localhost:11434), Claude, OpenAI,
     const _senderEl  = document.getElementById(_liveId + '-sender');
     // Финальный лейбл (без анимации)
     const _finalLabel = wizFinalSenderHTML(provider, _wizUsedWeb);
+    let _wizReplyForSugg = '';
 
     if (shouldStream && provider !== 'gemini') {
       // ── SSE streaming ─────────────────────────────────────────────────
@@ -6552,6 +6637,7 @@ AI провайдеры: Ollama (офлайн, localhost:11434), Claude, OpenAI,
           if (_textEl) _textEl.innerHTML = renderMarkdown(fullReply);
           if (_senderEl) _senderEl.innerHTML = _finalLabel;
           if (db) dbPut('messages', { role: 'assistant', content: fullReply, ts: Date.now(), panel: activePanel, chatId: currentChatId });
+          _wizReplyForSugg = fullReply;
           autoExtractFacts(fullReply);
           // L2: сохраняем дайджест сессии (async, в фоне)
           if (currentChatId && typeof l2Consolidate === 'function') setTimeout(() => l2Consolidate(currentChatId), 3000);
@@ -6605,6 +6691,7 @@ AI провайдеры: Ollama (офлайн, localhost:11434), Claude, OpenAI,
       if (_textEl) _textEl.innerHTML = renderMarkdown(reply);
       if (_senderEl) _senderEl.innerHTML = _finalLabel;
       if (db) dbPut('messages', { role: 'assistant', content: reply, ts: Date.now(), panel: activePanel, chatId: currentChatId });
+      _wizReplyForSugg = reply;
       autoExtractFacts(reply);
       if (getProjects().length && reply.length > 80 && Math.random() < 0.3) {
         setTimeout(() => suggestProjectSave(reply.slice(0, 200)), 1200);
@@ -6620,6 +6707,11 @@ AI провайдеры: Ollama (офлайн, localhost:11434), Claude, OpenAI,
       _actDiv.className = 'msg-actions';
       _actDiv.innerHTML = `<button class="msg-action-btn" onclick="copyMessage('${_msgId}')" title="Копировать">📋</button><button class="msg-action-btn tts-btn" data-msgid="${_msgId}" onclick="toggleSpeech('${_msgId}',document.getElementById('${_msgId}').innerText)" title="Озвучить">🔊</button>`;
       _existMeta.appendChild(_actDiv);
+    }
+    // Умные подсказки: 3 чипа под ответом (только чат, в фоне, тихо)
+    if (activePanel === 'chat' && _wizReplyForSugg && _wizReplyForSugg.length > 20) {
+      const _suggBubble = typing;
+      setTimeout(() => wizGenerateSuggestions(_suggBubble, text, _wizReplyForSugg), 600);
     }
     // Снять id typing-indicator чтобы следующий typing мог занять его место
     typing.id = '';
@@ -7827,6 +7919,16 @@ if (toggleDiary) {
 
 document.getElementById('openDiaryBtn')?.addEventListener('click', openDiary);
 
+// Умные подсказки — тумблер в Настройках (по умолчанию вкл)
+const toggleWizSugg = document.getElementById('toggleWizSugg');
+if (toggleWizSugg) {
+  toggleWizSugg.checked = wizSuggIsEnabled();
+  toggleWizSugg.addEventListener('change', () => {
+    localStorage.setItem(WIZ_SUGG_KEY, toggleWizSugg.checked ? '1' : '0');
+    showToast(toggleWizSugg.checked ? '💡 Подсказки включены' : '💡 Подсказки выключены');
+  });
+}
+
 function openDiary() {
   const modal = document.getElementById('diaryModal');
   if (!modal) return;
@@ -8492,7 +8594,7 @@ const LANGS = {
 <p style="color:var(--text-dim);font-size:0.78rem;margin-top:10px;padding-top:10px;border-top:1px solid var(--toggle-border)">💡 ИИ видит эту информацию и может давать советы по улучшению.</p>`,
     memInfoText:`Память о проектах хранится в IndexedDB локально в браузере.<br>Факты проходят через ESM: <strong style="color:var(--gold-dim)">Observed → Validated → Collapsed</strong>.`,
     // v1.7.8 — extra translations
-    tab_notes:'Заметки', tab_projects:'Проекты', tab_eiti_files:'EITI Файлы', tab_diary:'Дневник',
+    tab_notes:'Заметки', tab_projects:'Проекты', tab_eiti_files:'EITI Файлы', tab_board:'Доска', tab_diary:'Дневник',
     ttl_attach:'Прикрепить файл', ttl_clear_chat:'Очистить чат', ttl_clear_field:'Очистить поле ввода',
     ttl_clear_api:'Очистить API ключ', ttl_send:'Отправить', ttl_stop_agent:'Остановить агента',
     ttl_clear_agent:'Очистить агента', ttl_run_agent:'Запустить агента',
@@ -8555,6 +8657,7 @@ const LANGS = {
     mod_memory:'Память', mod_memory_desc:'Умная память: EITI Memory, L2/L3, AI-анализ',
     mod_notes:'Заметки', mod_notes_desc:'Цветные карточки, AI создаёт заметки',
     mod_eiti_files:'EITI Файлы', mod_eiti_files_desc:'Создание и редактирование файлов',
+    mod_board:'Доска', mod_board_desc:'Канбан-доска задач с перетаскиванием',
     mod_projects:'Проекты', mod_projects_desc:'Персональные проекты с контекстом',
     mod_history:'История', mod_history_desc:'Все чаты сгруппированные, поиск',
     mod_files:'Файлы', mod_files_desc:'RAG: PDF, DOCX, TXT для контекста AI',
@@ -8736,7 +8839,7 @@ const LANGS = {
 <p style="color:var(--text-dim);font-size:0.78rem;margin-top:10px;padding-top:10px;border-top:1px solid var(--toggle-border)">💡 AI sees this info and can suggest improvements.</p>`,
     memInfoText:`Project memory is stored in IndexedDB locally in the browser.<br>Facts go through ESM: <strong style="color:var(--gold-dim)">Observed → Validated → Collapsed</strong>.`,
     // v1.7.8 — extra translations
-    tab_notes:'Notes', tab_projects:'Projects', tab_eiti_files:'EITI Files', tab_diary:'Diary',
+    tab_notes:'Notes', tab_projects:'Projects', tab_eiti_files:'EITI Files', tab_board:'Board', tab_diary:'Diary',
     ttl_attach:'Attach file', ttl_clear_chat:'Clear chat', ttl_clear_field:'Clear input',
     ttl_clear_api:'Clear API key', ttl_send:'Send', ttl_stop_agent:'Stop agent',
     ttl_clear_agent:'Clear agent', ttl_run_agent:'Run agent',
@@ -8799,6 +8902,7 @@ const LANGS = {
     mod_memory:'Memory', mod_memory_desc:'Smart memory: EITI Memory, L2/L3, AI analysis',
     mod_notes:'Notes', mod_notes_desc:'Color cards, AI creates notes',
     mod_eiti_files:'EITI Files', mod_eiti_files_desc:'Create and edit files',
+    mod_board:'Board', mod_board_desc:'Kanban task board with drag-and-drop',
     mod_projects:'Projects', mod_projects_desc:'Personal projects with context',
     mod_history:'History', mod_history_desc:'All chats grouped, search',
     mod_files:'Files', mod_files_desc:'RAG: PDF, DOCX, TXT for AI context',
@@ -9832,6 +9936,7 @@ var TAB_DEFS = [
   { panel:'memory',     icon:'🧠', labelKey:'mod_memory',     descKey:'mod_memory_desc',     required:false },
   { panel:'notes',      icon:'📝', labelKey:'mod_notes',      descKey:'mod_notes_desc',      required:false },
   { panel:'eiti-files', icon:'💾', labelKey:'mod_eiti_files', descKey:'mod_eiti_files_desc', required:false },
+  { panel:'board',      icon:'📋', labelKey:'mod_board',      descKey:'mod_board_desc',      required:false },
   { panel:'projects',   icon:'🧰', labelKey:'mod_projects',   descKey:'mod_projects_desc',   required:false },
   { panel:'history',    icon:'📜', labelKey:'mod_history',    descKey:'mod_history_desc',    required:false },
   { panel:'files',      icon:'📁', labelKey:'mod_files',      descKey:'mod_files_desc',      required:false },
@@ -10194,6 +10299,120 @@ function escapeHtml(s) {
   return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// Умные подсказки — 3 чипа-вопроса после ответа AI (порт из Velantrim EITI).
+// Переиспользует провайдера/ключ/модель самого Wizard (как _rneCallLLM), так
+// что новых зависимостей и ключей не добавляет. Тихо выключается, если нет
+// провайдера или тумблер в Настройках снят.
+// ═══════════════════════════════════════════════════════════════════════════
+const WIZ_SUGG_KEY = 'wiz_suggestions_enabled';
+
+function wizSuggIsEnabled() {
+  return localStorage.getItem(WIZ_SUGG_KEY) !== '0';
+}
+
+// Тот же способ разрешения провайдера/ключа, что и в sendMessage.
+function _wizSuggResolveAPI() {
+  const provider = document.getElementById('cfgProvider')?.value;
+  const model    = document.getElementById('cfgModel')?.value;
+  if (!provider || provider === 'ollama') return null; // локалка пропускаем
+  const apiKey = sessionStorage.getItem('cfgApiKey_' + provider) ||
+                 (provider === document.getElementById('cfgProvider')?.value
+                   ? (sessionStorage.getItem('cfgApiKey') || '')
+                   : '');
+  if (!apiKey) return null;
+  return { provider, model, apiKey };
+}
+
+async function wizGenerateSuggestions(msgEl, lastUserMsg, lastAIMsg) {
+  if (!wizSuggIsEnabled()) return;
+  const cfg = _wizSuggResolveAPI();
+  if (!cfg) return;
+
+  const prompt =
+    'На основе диалога предложи РОВНО 3 коротких вопроса или действия (7-10 слов каждый). ' +
+    'Верни ТОЛЬКО JSON массив без markdown: ["вопрос 1","вопрос 2","вопрос 3"]\n\n' +
+    'Пользователь: ' + (lastUserMsg || '').slice(0, 200) + '\n' +
+    'AI: ' + (lastAIMsg || '').slice(0, 400);
+
+  let raw = '';
+  try {
+    let apiUrl, headers, body;
+    if (cfg.provider === 'gemini') {
+      apiUrl = 'https://generativelanguage.googleapis.com/v1beta/models/' + cfg.model + ':generateContent?key=' + cfg.apiKey;
+      headers = { 'Content-Type': 'application/json' };
+      body = { contents:[{ parts:[{ text: prompt }] }], generationConfig:{ temperature:0.7, maxOutputTokens:150 } };
+    } else if (cfg.provider === 'claude') {
+      apiUrl = 'https://api.anthropic.com/v1/messages';
+      headers = { 'Content-Type':'application/json', 'x-api-key':cfg.apiKey, 'anthropic-version':'2023-06-01', 'anthropic-dangerous-direct-browser-access':'true' };
+      body = { model: cfg.model, max_tokens:150, temperature:0.7, messages:[{ role:'user', content: prompt }] };
+    } else {
+      const urlMap = {
+        deepseek:   'https://api.deepseek.com/v1/chat/completions',
+        openai:     'https://api.openai.com/v1/chat/completions',
+        groq:       'https://api.groq.com/openai/v1/chat/completions',
+        grok:       'https://api.x.ai/v1/chat/completions',
+        openrouter: 'https://openrouter.ai/api/v1/chat/completions'
+      };
+      apiUrl = urlMap[cfg.provider];
+      if (!apiUrl) return;
+      const bearer = cfg.provider === 'openrouter' ? (sessionStorage.getItem('eiti_or_key') || cfg.apiKey) : cfg.apiKey;
+      headers = { 'Content-Type':'application/json', 'Authorization':'Bearer ' + bearer };
+      body = { model: cfg.model, max_tokens:150, temperature:0.7, messages:[{ role:'user', content: prompt }] };
+    }
+
+    const r = await fetch(apiUrl, { method:'POST', headers, body: JSON.stringify(body) });
+    if (!r.ok) return;
+    const d = await r.json();
+    if (cfg.provider === 'gemini') {
+      raw = d?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    } else if (cfg.provider === 'claude') {
+      raw = d?.content?.[0]?.text || '';
+    } else {
+      raw = d?.choices?.[0]?.message?.content || '';
+    }
+
+    let suggestions = JSON.parse(raw.replace(/```json|```/g, '').trim());
+    if (!Array.isArray(suggestions)) return;
+    suggestions = suggestions.slice(0, 3).filter(s => typeof s === 'string' && s.length > 3);
+    if (suggestions.length) _wizSuggRenderChips(msgEl, suggestions);
+  } catch(e) {
+    if (window.EITI_DEBUG) console.warn('[Sugg]', e.message);
+  }
+}
+
+function _wizSuggRenderChips(msgEl, suggestions) {
+  if (!msgEl) {
+    const all = document.querySelectorAll('#chatHistory .msg.ai');
+    msgEl = all[all.length - 1] || null;
+  }
+  if (!msgEl) return;
+  const old = msgEl.querySelector('.wiz-sugg-chips');
+  if (old) old.remove();
+
+  const wrap = document.createElement('div');
+  wrap.className = 'wiz-sugg-chips';
+  wrap.style.cssText = 'display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.07)';
+
+  suggestions.forEach(text => {
+    const chip = document.createElement('button');
+    chip.textContent = '💡 ' + text;
+    chip.style.cssText = 'padding:5px 12px;border-radius:16px;border:1px solid var(--gold-dim);background:rgba(201,149,42,0.08);color:var(--text);font-size:12px;cursor:pointer;text-align:left';
+    chip.addEventListener('mouseenter', () => { chip.style.background = 'rgba(201,149,42,0.16)'; });
+    chip.addEventListener('mouseleave', () => { chip.style.background = 'rgba(201,149,42,0.08)'; });
+    chip.addEventListener('click', () => {
+      const inp = document.getElementById('chatInput');
+      if (inp) {
+        inp.value = text;
+        wrap.remove();
+        sendMessage(inp, document.getElementById('chatHistory'));
+      }
+    });
+    wrap.appendChild(chip);
+  });
+  (msgEl.querySelector('.msg-content') || msgEl).appendChild(wrap);
+}
+
 function eitiMemExport() {
   eitiMemLoadAsync().then(all => {
     const blob = new Blob([JSON.stringify({ version:'1.0', exported:new Date().toISOString(), count:all.length, entries:all }, null, 2)], { type:'application/json' });
@@ -10386,6 +10605,8 @@ function eitiBoardRefreshStats() {
     all.forEach(t => { counts[t.status||'To Do'] = (counts[t.status||'To Do']||0)+1; });
     el.innerHTML = `<b>${all.length}</b> задач · 📥 ${counts['To Do']} · 🔄 ${counts['In Progress']} · ✅ ${counts['Done']} · 🚧 ${counts['Blocked']}`;
   });
+  // если панель доски открыта — обновим и её (напр. после команд AI)
+  if (activePanel === 'board' && typeof boardRenderPanel === 'function') boardRenderPanel();
 }
 
 function showEitiBoard() {
@@ -10434,6 +10655,110 @@ function showEitiBoard() {
       ${html}
     </div>`;
   });
+}
+
+// ── Доска как панель (Kanban в panel-board) с drag-and-drop ──────────
+const BOARD_PANEL_COLUMNS = [
+  { id:'To Do',       label:'📥 К выполнению' },
+  { id:'In Progress', label:'🔄 В работе' },
+  { id:'Done',        label:'✅ Готово' },
+  { id:'Blocked',     label:'🚧 Заблокировано' }
+];
+
+function boardRenderPanel() {
+  const wrap = document.getElementById('boardColumns');
+  if (!wrap) return;
+  eitiBoardLoadAsync().then(all => {
+    const byStatus = {};
+    BOARD_PANEL_COLUMNS.forEach(c => byStatus[c.id] = []);
+    all.forEach(t => { const s = t.status || 'To Do'; (byStatus[s] = byStatus[s] || []).push(t); });
+    // порядок внутри колонки: явный order, иначе по дате создания
+    Object.keys(byStatus).forEach(s =>
+      byStatus[s].sort((a, b) => _boardOrder(a) - _boardOrder(b)));
+
+    wrap.innerHTML = '';
+    BOARD_PANEL_COLUMNS.forEach(col => {
+      const tasks = byStatus[col.id] || [];
+      const colEl = document.createElement('div');
+      colEl.dataset.status = col.id;
+      colEl.style.cssText = 'min-width:230px;max-width:300px;flex:1;background:var(--input-bg);border:1px solid var(--gold-dim);border-radius:12px;padding:10px;display:flex;flex-direction:column;gap:8px';
+      colEl.innerHTML = `<div style="font-size:.85rem;font-weight:700;color:var(--gold)">${col.label} <span style="opacity:.6;font-weight:400">(${tasks.length})</span></div>`;
+
+      // drop-зона: меняем и статус (между колонками), и порядок (внутри колонки)
+      colEl.addEventListener('dragover', e => { e.preventDefault(); colEl.style.background = 'rgba(201,149,42,.12)'; });
+      colEl.addEventListener('dragleave', () => { colEl.style.background = 'var(--input-bg)'; });
+      colEl.addEventListener('drop', e => {
+        e.preventDefault();
+        colEl.style.background = 'var(--input-bg)';
+        const id = e.dataTransfer.getData('text/plain');
+        if (!id) return;
+        // индекс вставки по вертикальной позиции курсора среди карточек колонки
+        const cards = [...colEl.querySelectorAll('.board-card')].filter(c => c.dataset.id !== id);
+        let idx = cards.length;
+        for (let i = 0; i < cards.length; i++) {
+          const r = cards[i].getBoundingClientRect();
+          if (e.clientY < r.top + r.height / 2) { idx = i; break; }
+        }
+        boardMoveTask(id, col.id, idx);
+      });
+
+      tasks.forEach(t => {
+        const prio = { high:'🔴', medium:'🟡', low:'🟢' }[t.priority] || '⚪';
+        const tags = (t.tags||[]).map(x => `<span style="background:rgba(201,149,42,.15);padding:1px 5px;border-radius:5px;font-size:9px">${escapeHtml(x)}</span>`).join(' ');
+        const card = document.createElement('div');
+        card.className = 'board-card';
+        card.dataset.id = t.id;
+        card.draggable = true;
+        card.style.cssText = 'background:var(--card-bg);border:1px solid var(--gold-dim);border-radius:8px;padding:8px 10px;font-size:12px;cursor:grab';
+        card.innerHTML = `
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:6px">
+            <div style="font-weight:700;flex:1">${prio} ${escapeHtml(t.title)}</div>
+            <button onclick="eitiBoardDelete('${t.id}').then(boardRenderPanel)" style="background:none;border:none;color:#ff6b6b;cursor:pointer;padding:0 2px">✕</button>
+          </div>
+          ${t.description?`<div style="font-size:11px;opacity:.7;margin-top:2px">${escapeHtml(t.description)}</div>`:''}
+          ${t.dueDate?`<div style="font-size:10px;opacity:.6;margin-top:2px">📅 ${escapeHtml(t.dueDate)}</div>`:''}
+          ${tags?`<div style="margin-top:4px">${tags}</div>`:''}`;
+        card.addEventListener('dragstart', e => { e.dataTransfer.setData('text/plain', t.id); card.style.opacity = '.5'; });
+        card.addEventListener('dragend', () => { card.style.opacity = '1'; });
+        colEl.appendChild(card);
+      });
+      wrap.appendChild(colEl);
+    });
+
+    const stats = document.getElementById('board-panel-stats');
+    if (stats) {
+      stats.innerHTML = all.length
+        ? `<b>${all.length}</b> задач · перетаскивай карточки между колонками`
+        : '📭 Доска пуста — добавь задачу кнопкой «＋ Задача» или попроси AI';
+    }
+  });
+}
+
+// порядковый ключ карточки: явный order имеет приоритет, иначе дата создания
+function _boardOrder(t) {
+  return (typeof t.order === 'number') ? t.order : (t.created || 0);
+}
+
+// Переместить задачу в колонку status на позицию idx и пересчитать порядок.
+async function boardMoveTask(id, status, idx) {
+  const all = await eitiBoardLoadAsync();
+  const dragged = all.find(t => t.id === id);
+  if (!dragged) return;
+  let colTasks = all
+    .filter(t => (t.status || 'To Do') === status && t.id !== id)
+    .sort((a, b) => _boardOrder(a) - _boardOrder(b));
+  dragged.status = status;
+  colTasks.splice(Math.max(0, Math.min(idx, colTasks.length)), 0, dragged);
+  // перенумеровываем всю колонку (0..n) и сохраняем только эту колонку
+  await Promise.all(colTasks.map((t, i) =>
+    eitiBoardUpdate(t.id, { status, order: i })));
+  boardRenderPanel();
+}
+
+function boardPanelAddPrompt() {
+  const title = prompt('Название задачи:');
+  if (!title || !title.trim()) return;
+  eitiBoardAdd({ title: title.trim(), status: 'To Do', priority: 'medium' }).then(boardRenderPanel);
 }
 
 // Parse [TASK_ADD:status|title|desc|date|priority|tags] from AI replies
@@ -11082,11 +11407,75 @@ const NOTE_COLORS = [
 ];
 const NOTE_EMOJIS = ['📝','💡','🔥','⭐','🎯','🌟','💎','🚀','🌙','🎨'];
 
+// v1.8.4: активный фильтр по папке ('' = все папки)
+let _notesFolder = '';
+
+// Список уникальных папок из всех заметок
+function notesAllFolders() {
+  const set = new Set();
+  notesLoad().forEach(n => { if (n.folder) set.add(n.folder); });
+  return [...set].sort((a, b) => a.localeCompare(b, 'ru'));
+}
+
+// Палитра цветов в редакторе заметки
+function _notesRenderColorPicker(selectedIdx) {
+  const wrap = document.getElementById('noteEditorColors');
+  const hid  = document.getElementById('noteEditorColor');
+  if (!wrap || !hid) return;
+  hid.value = selectedIdx;
+  wrap.innerHTML = '';
+  NOTE_COLORS.forEach((c, i) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.title = 'Цвет ' + (i + 1);
+    b.style.cssText = `width:22px;height:22px;border-radius:50%;cursor:pointer;background:${c.bg};border:2px solid ${i === selectedIdx ? 'var(--gold)' : c.border}`;
+    b.addEventListener('click', () => _notesRenderColorPicker(i));
+    wrap.appendChild(b);
+  });
+}
+
+// Подсказки папок в datalist редактора
+function _notesUpdateFolderDatalist() {
+  const dl = document.getElementById('noteFolderList');
+  if (!dl) return;
+  dl.innerHTML = notesAllFolders().map(f => `<option value="${escapeHtml(f)}">`).join('');
+}
+
+// Чипы папок над списком заметок
+function notesRenderFolderChips() {
+  const bar = document.getElementById('notesFolders');
+  if (!bar) return;
+  const folders = notesAllFolders();
+  if (_notesFolder && !folders.includes(_notesFolder)) _notesFolder = ''; // папка исчезла
+  if (!folders.length) { bar.innerHTML = ''; return; }
+  const t = LANGS[currentLang] || LANGS.ru;
+  bar.innerHTML = '';
+  const addChip = (label, val) => {
+    const active = _notesFolder === val;
+    const b = document.createElement('button');
+    b.textContent = label;
+    b.style.cssText = `padding:4px 10px;border-radius:14px;font-size:.78rem;cursor:pointer;`
+      + `border:1px solid ${active ? 'var(--gold)' : 'var(--gold-dim)'};`
+      + `background:${active ? 'var(--gold)' : 'transparent'};`
+      + `color:${active ? '#000' : 'var(--text)'};font-weight:${active ? '700' : '400'}`;
+    b.addEventListener('click', () => notesSetFolder(val));
+    bar.appendChild(b);
+  };
+  addChip(t.notes_all_folders || '📂 Все', '');
+  folders.forEach(f => addChip('📁 ' + f, f));
+}
+
+function notesSetFolder(folder) {
+  _notesFolder = folder || '';
+  notesRender(document.getElementById('notesSearch')?.value || '');
+}
+
 function notesLoad() {
   try { return JSON.parse(localStorage.getItem('wiz_notes_v1')||'[]'); } catch { return []; }
 }
 function notesSave(notes) {
   localStorage.setItem('wiz_notes_v1', JSON.stringify(notes));
+  _wizNotesIdxDirty = true; // FTS-индекс пересоберётся при следующем поиске
 }
 
 function notesGetLayout() {
@@ -11126,12 +11515,27 @@ function notesRender(filter) {
     list.style.gridTemplateColumns = '1fr 1fr';
     list.style.gap = '10px';
   }
+  notesRenderFolderChips();
   let notes = notesLoad();
+  // v1.8.4: фильтр по активной папке
+  if (_notesFolder) notes = notes.filter(n => (n.folder || '') === _notesFolder);
+  let _ftsOrdered = false;
   if (filter) {
-    const q = filter.toLowerCase();
-    notes = notes.filter(n => (n.title||'').toLowerCase().includes(q) || (n.body||'').toLowerCase().includes(q));
+    // v1.8.1: сначала пробуем FTS5/BM25; если индекс недоступен ИЛИ дал 0
+    // совпадений (напр. подстрока внутри токена: «script» в «JavaScript») —
+    // откатываемся на includes(), чтобы не терять заметки.
+    const ids = (typeof wizSearchNotes === 'function') ? wizSearchNotes(filter) : null;
+    if (ids && ids.length) {
+      const rank = new Map(ids.map((id, i) => [String(id), i]));
+      notes = notes.filter(n => rank.has(String(n.id)));
+      notes.sort((a, b) => rank.get(String(a.id)) - rank.get(String(b.id)));
+      _ftsOrdered = true; // порядок уже по релевантности
+    } else {
+      const q = filter.toLowerCase();
+      notes = notes.filter(n => (n.title||'').toLowerCase().includes(q) || (n.body||'').toLowerCase().includes(q));
+    }
   }
-  notes.sort((a,b) => (b.updated||0)-(a.updated||0));
+  if (!_ftsOrdered) notes.sort((a,b) => (b.updated||0)-(a.updated||0));
   if (!notes.length) {
     const emptyMsg = filter
       ? (t.notes_empty_search || 'Ничего не найдено')
@@ -11146,6 +11550,14 @@ function notesRender(filter) {
     const col = NOTE_COLORS[ci];
     const emoji = NOTE_EMOJIS[(n.emojiIdx||0) % NOTE_EMOJIS.length];
     const date = new Date(n.updated||0).toLocaleDateString(dateLocale, {day:'2-digit',month:'short'});
+    // v1.8.4: чипы тегов + бейдж папки
+    const tagsHtml = (n.tags && n.tags.length)
+      ? `<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:6px">` +
+        n.tags.slice(0, 5).map(x => `<span style="background:rgba(201,149,42,.15);color:var(--gold);padding:1px 6px;border-radius:8px;font-size:9px">${escapeHtml(x)}</span>`).join('') +
+        `</div>`
+      : '';
+    const folderHtml = n.folder
+      ? `<span style="font-size:.65rem;color:var(--text-dim);opacity:.7">📁 ${escapeHtml(n.folder)}</span>` : '';
     if (layout === 'vertical') {
       const preview = (n.body||'').slice(0, 200);
       return `<div onclick="notesOpen('${n.id}')"
@@ -11157,6 +11569,7 @@ function notesRender(filter) {
             <div style="font-size:.7rem;color:var(--text-dim);opacity:.6;flex-shrink:0">${date}</div>
           </div>
           ${preview ? `<div style="font-size:.8rem;color:var(--text-dim);line-height:1.45;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(preview)}${preview.length >= 200 ? '…' : ''}</div>` : ''}
+          ${folderHtml}${tagsHtml}
         </div>
       </div>`;
     }
@@ -11166,7 +11579,8 @@ function notesRender(filter) {
         style="padding:10px 12px;border-radius:10px;border:1px solid rgba(0,0,0,.08);background:#ffffff;color:#222;cursor:pointer;user-select:none;min-height:100px;word-break:break-word;box-shadow:0 1px 3px rgba(0,0,0,.08)">
         <div style="font-size:.88rem;font-weight:700;line-height:1.25;margin-bottom:4px;color:#111">${escapeHtml(n.title||untitled)}</div>
         ${preview ? `<div style="font-size:.76rem;color:#555;line-height:1.4">${escapeHtml(preview)}${preview.length >= 180 ? '…' : ''}</div>` : ''}
-        <div style="font-size:.68rem;color:#888;margin-top:6px">${date}</div>
+        ${tagsHtml}
+        <div style="font-size:.68rem;color:#888;margin-top:6px">${n.folder ? '📁 ' + escapeHtml(n.folder) + ' · ' : ''}${date}</div>
       </div>`;
     }
     // tiles (default)
@@ -11176,7 +11590,8 @@ function notesRender(filter) {
       <div style="font-size:1.2rem;margin-bottom:4px">${emoji}</div>
       <div style="font-size:.9rem;font-weight:700;line-height:1.3;margin-bottom:4px;color:var(--text)">${escapeHtml(n.title||untitled)}</div>
       ${preview ? `<div style="font-size:.78rem;color:var(--text-dim);line-height:1.4">${escapeHtml(preview)}${preview.length >= 120 ? '…' : ''}</div>` : ''}
-      <div style="font-size:.7rem;color:var(--text-dim);margin-top:6px;opacity:.6">${date}</div>
+      ${tagsHtml}
+      <div style="font-size:.7rem;color:var(--text-dim);margin-top:6px;opacity:.6">${n.folder ? '📁 ' + escapeHtml(n.folder) + ' · ' : ''}${date}</div>
     </div>`;
   }).join('');
 }
@@ -11186,6 +11601,10 @@ function notesNew() {
   document.getElementById('noteEditorId').value = '';
   document.getElementById('noteEditorTitle').value = '';
   document.getElementById('noteEditorBody').value = '';
+  document.getElementById('noteEditorFolder').value = _notesFolder || ''; // префилл активной папкой
+  document.getElementById('noteEditorTags').value = '';
+  _notesUpdateFolderDatalist();
+  _notesRenderColorPicker(Math.floor(Math.random() * NOTE_COLORS.length));
   document.getElementById('noteEditorMeta').textContent = t.notes_new || 'Новая заметка';
   const ov = document.getElementById('noteEditorOverlay');
   ov.style.display = 'flex';
@@ -11198,6 +11617,10 @@ function notesOpen(id) {
   document.getElementById('noteEditorId').value = id;
   document.getElementById('noteEditorTitle').value = n.title||'';
   document.getElementById('noteEditorBody').value = n.body||'';
+  document.getElementById('noteEditorFolder').value = n.folder || '';
+  document.getElementById('noteEditorTags').value = (n.tags || []).join(', ');
+  _notesUpdateFolderDatalist();
+  _notesRenderColorPicker((n.colorIdx || 0) % NOTE_COLORS.length);
   const _locale = currentLang === 'en' ? 'en-US' : 'ru';
   document.getElementById('noteEditorMeta').textContent = new Date(n.updated||0).toLocaleString(_locale);
   const ov = document.getElementById('noteEditorOverlay');
